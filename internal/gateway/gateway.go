@@ -1,6 +1,6 @@
-// Package gateway discovers available models from the CaldenSec gateway
+// Package gateway discovers available models from the Reto IA gateway
 // (a gateway exposing an OpenAI-compatible `GET /models` endpoint)
-// at runtime. This mirrors the `calden-agents.sh` script's
+// at runtime. This mirrors the `retoia-agents.sh` script's
 // `curl "$BASE/models" | jq -r '.data[].id' | sort` behavior.
 package gateway
 
@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ficopix/caldensec/internal/config"
+	"github.com/retoia/retoia-cli/internal/config"
 	"github.com/tidwall/gjson"
 )
 
@@ -37,7 +37,7 @@ var ErrInvalidKey = errors.New("gateway rejected the server key")
 // from an invalid key with errors.Is(err, ErrGatewayUnreachable).
 var ErrGatewayUnreachable = errors.New("gateway unreachable")
 
-// FetchModels queries "<base>/models" on the CaldenSec gateway and returns
+// FetchModels queries "<base>/models" on the Reto IA gateway and returns
 // every model id found under the OpenAI-compatible `{"data":[{"id":...}]}`
 // response shape, sorted ascending by id. Each returned config.Model has its
 // Name set to its id (the endpoint carries no separate display name).

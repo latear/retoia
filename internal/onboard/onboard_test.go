@@ -7,37 +7,37 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ficopix/caldensec/internal/keystore"
-	"github.com/ficopix/caldensec/internal/urlseal"
+	"github.com/retoia/retoia-cli/internal/keystore"
+	"github.com/retoia/retoia-cli/internal/urlseal"
 )
 
 // TestRealTemplates_Unseal is a verification harness, not a CI test: it is
-// skipped unless $CALDENSEC_UNLOCK is set. With the real install passphrase it
+// skipped unless $RETOIA_UNLOCK is set. With the real install passphrase it
 // proves the baked templates in sealed.go unseal correctly AND with the SAME
 // passphrase as the gateway URL (AES-256-GCM is authenticated, so a wrong
 // passphrase fails cleanly here instead of silently falling back at install).
 // It also catches stale agent names. Run it via ./verify-template.sh.
 func TestRealTemplates_Unseal(t *testing.T) {
-	pass := os.Getenv("CALDENSEC_UNLOCK")
+	pass := os.Getenv("RETOIA_UNLOCK")
 	if pass == "" {
-		t.Skip("set CALDENSEC_UNLOCK (via ./verify-template.sh) to verify the real sealed templates")
+		t.Skip("set RETOIA_UNLOCK (via ./verify-template.sh) to verify the real sealed templates")
 	}
 	if _, err := UnsealBase(pass); err != nil {
 		t.Fatalf("UnsealBase failed — this passphrase does not match the sealed gateway URL; reseal the templates with the SAME passphrase: %v", err)
 	}
-	calden, cloud, both, err := UnsealAgents(pass)
+	retoia, cloud, both, err := UnsealAgents(pass)
 	if err != nil {
 		t.Fatalf("UnsealAgents failed (wrong passphrase or corrupt blob): %v", err)
 	}
 	// Every agent that exists must be covered, under its CURRENT name.
 	wantAgents := []string{
-		"Calden-Orchestrator", "Calden-alone",
+		"Retoia-Orchestrator", "Retoia-alone",
 		"cs-coder", "cs-recon", "cs-pentester", "cs-reviewer", "cs-reporter",
 	}
 	for _, slot := range []struct {
 		name string
 		m    map[string]string
-	}{{"calden", calden}, {"cloud", cloud}, {"both", both}} {
+	}{{"retoia", retoia}, {"cloud", cloud}, {"both", both}} {
 		if len(slot.m) == 0 {
 			t.Errorf("slot %q unsealed empty", slot.name)
 			continue
@@ -57,7 +57,7 @@ func TestRealTemplates_Unseal(t *testing.T) {
 }
 
 // TestResolveBase covers the plaintext precedence: an explicit flag wins, then
-// $CALDENSEC_BASE. With neither and no sealed URL baked in, it reports
+// $RETOIA_BASE. With neither and no sealed URL baked in, it reports
 // ErrNoGateway.
 func TestResolveBase(t *testing.T) {
 	// Ensure no passphrase leaks in from the real environment.
@@ -100,7 +100,7 @@ func TestResolveBase(t *testing.T) {
 }
 
 // TestResolveBaseSealed covers the sealed-URL path: with a sealed value baked in
-// (simulated by setting the package var), the passphrase in $CALDENSEC_UNLOCK
+// (simulated by setting the package var), the passphrase in $RETOIA_UNLOCK
 // opens it; a missing passphrase is ErrLocked and a wrong one surfaces
 // urlseal.ErrWrongPassphrase.
 func TestResolveBaseSealed(t *testing.T) {
@@ -190,14 +190,14 @@ func TestUnsealBase(t *testing.T) {
 	}
 }
 
-// TestUnsealAgents covers the sealed calden/cloud/both templates: empty slots
+// TestUnsealAgents covers the sealed retoia/cloud/both templates: empty slots
 // yield nil maps; sealed slots open with the right passphrase; a wrong or empty
 // passphrase errors.
 func TestUnsealAgents(t *testing.T) {
 	t.Run("nothing sealed", func(t *testing.T) {
-		oc0, oc1, ob0 := sealedAgentsCalden, sealedAgentsCloud, sealedAgentsBoth
-		sealedAgentsCalden, sealedAgentsCloud, sealedAgentsBoth = "", "", ""
-		t.Cleanup(func() { sealedAgentsCalden, sealedAgentsCloud, sealedAgentsBoth = oc0, oc1, ob0 })
+		oc0, oc1, ob0 := sealedAgentsRetoia, sealedAgentsCloud, sealedAgentsBoth
+		sealedAgentsRetoia, sealedAgentsCloud, sealedAgentsBoth = "", "", ""
+		t.Cleanup(func() { sealedAgentsRetoia, sealedAgentsCloud, sealedAgentsBoth = oc0, oc1, ob0 })
 		cd, cl, bo, err := UnsealAgents("pw")
 		if err != nil || cd != nil || cl != nil || bo != nil {
 			t.Errorf("got (%v, %v, %v, %v), want all nil", cd, cl, bo, err)
@@ -208,16 +208,16 @@ func TestUnsealAgents(t *testing.T) {
 	cdb, _ := urlseal.Seal(`{"cs-recon":"model-b"}`, pass)
 	clb, _ := urlseal.Seal(`{"cs-recon":"cloud-x"}`, pass)
 	bob, _ := urlseal.Seal(`{"cs-recon":"both-x"}`, pass)
-	oc0, oc1, ob0 := sealedAgentsCalden, sealedAgentsCloud, sealedAgentsBoth
-	sealedAgentsCalden, sealedAgentsCloud, sealedAgentsBoth = cdb, clb, bob
-	t.Cleanup(func() { sealedAgentsCalden, sealedAgentsCloud, sealedAgentsBoth = oc0, oc1, ob0 })
+	oc0, oc1, ob0 := sealedAgentsRetoia, sealedAgentsCloud, sealedAgentsBoth
+	sealedAgentsRetoia, sealedAgentsCloud, sealedAgentsBoth = cdb, clb, bob
+	t.Cleanup(func() { sealedAgentsRetoia, sealedAgentsCloud, sealedAgentsBoth = oc0, oc1, ob0 })
 
 	cd, cl, bo, err := UnsealAgents(pass)
 	if err != nil {
 		t.Fatalf("UnsealAgents: %v", err)
 	}
 	if cd["cs-recon"] != "model-b" || cl["cs-recon"] != "cloud-x" || bo["cs-recon"] != "both-x" {
-		t.Errorf("got calden=%v cloud=%v both=%v, want the sealed maps", cd, cl, bo)
+		t.Errorf("got retoia=%v cloud=%v both=%v, want the sealed maps", cd, cl, bo)
 	}
 	if _, _, _, err := UnsealAgents(""); !errors.Is(err, ErrLocked) {
 		t.Errorf("empty passphrase err = %v, want ErrLocked", err)

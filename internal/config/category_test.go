@@ -8,10 +8,10 @@ func TestModelCategory(t *testing.T) {
 		want string
 	}{
 		{"auto", CategoryAutomatic},
-		{"model-a", CategoryCalden},
+		{"model-a", CategoryRetoia},
 		{"cloud-kk", CategoryCloud},
 		{"esfuerzo-medio", CategoryByEffort},
-		{"model-c", CategoryCalden}, // gateway-style id with no known prefix
+		{"model-c", CategoryRetoia}, // gateway-style id with no known prefix
 	}
 	for _, tt := range tests {
 		m := Model{ID: tt.id}
@@ -81,8 +81,8 @@ func TestGroupModelsByCategoryOrderAndEmptyOmitted(t *testing.T) {
 	groups := GroupModelsByCategory(models)
 
 	// "By effort" has no models and must be omitted; order must remain
-	// Automatic, Calden, Cloud (fixed order minus the empty category).
-	wantCats := []string{CategoryAutomatic, CategoryCalden, CategoryCloud}
+	// Automatic, Retoia, Cloud (fixed order minus the empty category).
+	wantCats := []string{CategoryAutomatic, CategoryRetoia, CategoryCloud}
 	if len(groups) != len(wantCats) {
 		t.Fatalf("expected %d groups, got %d: %+v", len(wantCats), len(groups), groups)
 	}
@@ -99,7 +99,7 @@ func TestGroupModelsByCategoryOrderAndEmptyOmitted(t *testing.T) {
 }
 
 func TestCategoryOrderIsFixed(t *testing.T) {
-	want := []string{CategoryAutomatic, CategoryCalden, CategoryByEffort, CategoryCloud}
+	want := []string{CategoryAutomatic, CategoryRetoia, CategoryByEffort, CategoryCloud}
 	got := CategoryOrder()
 	if len(got) != len(want) {
 		t.Fatalf("expected %d categories, got %d: %+v", len(want), len(got), got)

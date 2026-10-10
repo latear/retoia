@@ -8,7 +8,7 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	"github.com/ficopix/caldensec/internal/config"
+	"github.com/retoia/retoia-cli/internal/config"
 )
 
 // TestApplyInstallFreshConfig covers a clean machine where opencode.json does
@@ -18,13 +18,13 @@ func TestApplyInstallFreshConfig(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("OPENCODE_AUTH_PATH", filepath.Join(home, "auth.json"))
-	t.Setenv("CALDENSEC_API_KEY", "sk-fresh")
+	t.Setenv("RETOIA_API_KEY", "sk-fresh")
 
 	cfg := filepath.Join(home, ".config", "opencode", "opencode.json") // does NOT exist
 	setup := setupResult{}                                             // no extras
 	key := keyResult{models: []config.Model{{ID: "model-a", Name: "Orca"}, {ID: "cloud-b", Name: "GLM"}}}
 
-	res, err := apply(cfg, "caldensec", "https://gateway.example/v1", "", setup, key)
+	res, err := apply(cfg, "retoia", "https://gateway.example/v1", "", setup, key)
 	if err != nil {
 		t.Fatalf("apply on a fresh machine: %v", err)
 	}
@@ -37,10 +37,10 @@ func TestApplyInstallFreshConfig(t *testing.T) {
 	if !gjson.ValidBytes(data) {
 		t.Fatal("created config is not valid JSON")
 	}
-	if got := gjson.GetBytes(data, "provider.caldensec.options.baseURL").String(); got != "https://gateway.example/v1" {
+	if got := gjson.GetBytes(data, "provider.retoia.options.baseURL").String(); got != "https://gateway.example/v1" {
 		t.Errorf("baseURL = %q, want the gateway", got)
 	}
-	if !gjson.GetBytes(data, "provider.caldensec.models.model-a").Exists() {
+	if !gjson.GetBytes(data, "provider.retoia.models.model-a").Exists() {
 		t.Error("gateway provider models were not written (OpenCode could not route)")
 	}
 }
@@ -59,7 +59,7 @@ func TestApplyInstallEndToEnd(t *testing.T) {
 	// credential write does not touch the real keychain or the gateway.
 	authPath := filepath.Join(home, "auth.json")
 	t.Setenv("OPENCODE_AUTH_PATH", authPath)
-	t.Setenv("CALDENSEC_API_KEY", "sk-integration-test-key")
+	t.Setenv("RETOIA_API_KEY", "sk-integration-test-key")
 
 	// A temp copy of the sample config (never the real ~/.config file).
 	sample, err := os.ReadFile("../../testdata/opencode.sample.json")
@@ -75,7 +75,7 @@ func TestApplyInstallEndToEnd(t *testing.T) {
 	setup := setupResult{installEngram: true, installContext7: true}
 	key := keyResult{keepCurrent: true}
 
-	res, err := apply(cfg, "caldensec", base, "", setup, key)
+	res, err := apply(cfg, "retoia", base, "", setup, key)
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestApplyInstallEndToEnd(t *testing.T) {
 	}
 
 	// Provider base URL points at the gateway, not any stale host.
-	if got := gjson.GetBytes(data, "provider.caldensec.options.baseURL").String(); got != base {
+	if got := gjson.GetBytes(data, "provider.retoia.options.baseURL").String(); got != base {
 		t.Errorf("baseURL = %q, want %q", got, base)
 	}
 	// Engram: when the engram binary is available it is registered as a local
@@ -115,7 +115,7 @@ func TestApplyInstallEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("auth store not written: %v", err)
 	}
-	if got := gjson.GetBytes(authData, "caldensec.key").String(); got != "sk-integration-test-key" {
+	if got := gjson.GetBytes(authData, "retoia.key").String(); got != "sk-integration-test-key" {
 		t.Errorf("auth key = %q, want the env key", got)
 	}
 
@@ -127,7 +127,7 @@ func TestApplyInstallEndToEnd(t *testing.T) {
 
 	// Render the final screen so the "Next steps" commands are exercised.
 	view := summaryModel{res: res, width: 80}.View()
-	for _, want := range []string{"Next steps", "caldensec models", "caldensec key", "restart OpenCode", "Engram"} {
+	for _, want := range []string{"Next steps", "retoia models", "retoia key", "restart OpenCode", "Engram"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("summary is missing %q", want)
 		}

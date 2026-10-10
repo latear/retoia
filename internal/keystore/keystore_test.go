@@ -10,7 +10,7 @@ import (
 )
 
 // TestKeyringAllowed_DefaultOff locks in the macOS-safe default: the OS keyring
-// is never touched unless CALDENSEC_KEYCHAIN=1 is set. Flipping this default
+// is never touched unless RETOIA_KEYCHAIN=1 is set. Flipping this default
 // would reintroduce the blocking macOS keychain dialog that stalls installs.
 func TestKeyringAllowed_DefaultOff(t *testing.T) {
 	t.Setenv(keyringEnvVar, "")

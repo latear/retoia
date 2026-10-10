@@ -16,11 +16,11 @@ func TestWriteGeneratesArtifacts(t *testing.T) {
 
 	// Core artifacts must exist on disk with sensible content.
 	want := map[string]string{
-		"Dockerfile.sandbox":      "kalilinux/kali-rolling",
-		"compose.sandbox.yaml":    "CALDENSEC_API_KEY",
-		"caldensec-entrypoint.sh": "CALDENSEC_API_KEY",
-		"SANDBOX.md":              "sandbox edition",
-		".dockerignore":           ".git",
+		"Dockerfile.sandbox":   "kalilinux/kali-rolling",
+		"compose.sandbox.yaml": "RETOIA_API_KEY",
+		"retoia-entrypoint.sh": "RETOIA_API_KEY",
+		"SANDBOX.md":           "sandbox edition",
+		".dockerignore":        ".git",
 	}
 	for name, needle := range want {
 		data, err := os.ReadFile(filepath.Join(dir, name))
@@ -34,7 +34,7 @@ func TestWriteGeneratesArtifacts(t *testing.T) {
 	}
 
 	// Repo-less: the image bakes the host-generated config and installs OpenCode;
-	// it must NOT build caldensec from source.
+	// it must NOT build retoia from source.
 	df, _ := os.ReadFile(filepath.Join(dir, "Dockerfile.sandbox"))
 	if !strings.Contains(string(df), "COPY opencode-config/") || !strings.Contains(string(df), "opencode.ai/install") {
 		t.Error("Dockerfile.sandbox should bake opencode-config and install OpenCode")
@@ -44,7 +44,7 @@ func TestWriteGeneratesArtifacts(t *testing.T) {
 	}
 
 	// The entrypoint script is executable.
-	fi, err := os.Stat(filepath.Join(dir, "caldensec-entrypoint.sh"))
+	fi, err := os.Stat(filepath.Join(dir, "retoia-entrypoint.sh"))
 	if err != nil || fi.Mode().Perm()&0o100 == 0 {
 		t.Errorf("entrypoint not executable: mode=%v err=%v", fi.Mode(), err)
 	}

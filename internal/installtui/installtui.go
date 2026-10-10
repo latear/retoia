@@ -1,4 +1,4 @@
-// Package installtui implements the interactive `caldensec install` flow: a
+// Package installtui implements the interactive `retoia install` flow: a
 // Bubble Tea wizard over the non-interactive building blocks in
 // internal/installer. It runs as a short sequence of independent Bubble Tea
 // programs (never nested), each rendered inside the shared bordered "card" UI
@@ -24,11 +24,11 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/ficopix/caldensec/internal/config"
-	"github.com/ficopix/caldensec/internal/installer"
-	"github.com/ficopix/caldensec/internal/keystore"
-	"github.com/ficopix/caldensec/internal/mcpservers"
-	"github.com/ficopix/caldensec/internal/onboard"
+	"github.com/retoia/retoia-cli/internal/config"
+	"github.com/retoia/retoia-cli/internal/installer"
+	"github.com/retoia/retoia-cli/internal/keystore"
+	"github.com/retoia/retoia-cli/internal/mcpservers"
+	"github.com/retoia/retoia-cli/internal/onboard"
 )
 
 // The install wizard's palette and box/screen renderers live in theme.go.
@@ -121,8 +121,8 @@ type applyResult struct {
 	context7Configured bool // the context7 docs MCP was wired into opencode.json
 
 	tuiPluginsAdded []string // OpenCode TUI sidebar plugins added to tui.json
-	themeInstalled  bool     // the CaldenSec red theme was shipped + selected
-	logoInstalled   bool     // the CaldenSec home_logo TUI plugin was shipped + registered
+	themeInstalled  bool     // the Reto IA red theme was shipped + selected
+	logoInstalled   bool     // the Reto IA home_logo TUI plugin was shipped + registered
 	tuiPluginsPath  string   // path to the tui.json that was written
 
 	engramChosen       bool   // the user ticked the Engram option
@@ -147,7 +147,7 @@ func Run(configPath, providerID, base string, unlock func(string) (string, error
 	// passphrase came from the environment: ask for it here (masked) and decrypt
 	// the gateway base URL. Runs before the edition choice so both editions have
 	// the gateway; an empty submit continues without one.
-	passphrase := os.Getenv("CALDENSEC_UNLOCK") // may be set for a non-interactive unlock
+	passphrase := os.Getenv("RETOIA_UNLOCK") // may be set for a non-interactive unlock
 	if base == "" && unlock != nil {
 		um, err := runUnlockPage(unlock)
 		if err != nil {
@@ -281,7 +281,7 @@ func apply(configPath, providerID, base, passphrase string, setup setupResult, k
 	// just stored/kept on page 2) into OpenCode's auth store, so OpenCode can
 	// authenticate against the gateway at inference time. The raw key never
 	// touches opencode.json — it goes only into auth.json (0600).
-	serverKey := onboard.ResolveServerKey(os.Getenv("CALDENSEC_API_KEY"), keystore.Get)
+	serverKey := onboard.ResolveServerKey(os.Getenv("RETOIA_API_KEY"), keystore.Get)
 	if serverKey != "" {
 		authPath := resolveAuthPath(home)
 		if err := installer.SetOpenCodeCredential(authPath, providerID, serverKey); err != nil {
@@ -290,7 +290,7 @@ func apply(configPath, providerID, base, passphrase string, setup setupResult, k
 		res.credentialSet = true
 		res.credentialProvider = providerID
 	} else {
-		res.credentialSkipReason = "no server key available (set CALDENSEC_API_KEY or store one via the key gate)"
+		res.credentialSkipReason = "no server key available (set RETOIA_API_KEY or store one via the key gate)"
 	}
 
 	// PATH (mandatory).
@@ -355,7 +355,7 @@ func apply(configPath, providerID, base, passphrase string, setup setupResult, k
 	// sidebar panels for sub-agents, files and the task/plan backlog.
 	if setup.installTUIPlugins {
 		tuiPath := filepath.Join(filepath.Dir(configPath), "tui.json")
-		add, terr := installer.ConfigureTUIPlugins(tuiPath, installer.CaldenTUIPlugins)
+		add, terr := installer.ConfigureTUIPlugins(tuiPath, installer.RetoiaTUIPlugins)
 		if terr != nil {
 			return res, fmt.Errorf("configuring TUI plugins: %w", terr)
 		}
@@ -363,28 +363,28 @@ func apply(configPath, providerID, base, passphrase string, setup setupResult, k
 		res.tuiPluginsPath = tuiPath
 	}
 
-	// CaldenSec OpenCode theme (red/dark, matching the logo). Always installed —
+	// Reto IA OpenCode theme (red/dark, matching the logo). Always installed —
 	// it is just a local JSON file plus one tui.json key (no npm, no cost).
 	configDir := filepath.Dir(configPath)
-	if _, terr := installer.WriteCaldenTheme(configDir); terr != nil {
-		return res, fmt.Errorf("writing Calden theme: %w", terr)
+	if _, terr := installer.WriteRetoiaTheme(configDir); terr != nil {
+		return res, fmt.Errorf("writing Retoia theme: %w", terr)
 	}
-	if terr := installer.SetTUITheme(filepath.Join(configDir, "tui.json"), installer.CaldenThemeName); terr != nil {
-		return res, fmt.Errorf("selecting Calden theme: %w", terr)
+	if terr := installer.SetTUITheme(filepath.Join(configDir, "tui.json"), installer.RetoiaThemeName); terr != nil {
+		return res, fmt.Errorf("selecting Retoia theme: %w", terr)
 	}
 	res.themeInstalled = true
 
-	// CaldenSec startup logo: a tiny TUI plugin that renders the wordmark in the
+	// Reto IA startup logo: a tiny TUI plugin that renders the wordmark in the
 	// home_logo slot (OpenCode's own logo is compiled in and not themeable). Best
 	// effort — a failure here never blocks the install.
-	if logoPath, lerr := installer.WriteCaldenLogoPlugin(configDir); lerr == nil {
+	if logoPath, lerr := installer.WriteRetoiaLogoPlugin(configDir); lerr == nil {
 		if _, perr := installer.ConfigureTUIPlugins(filepath.Join(configDir, "tui.json"), []string{logoPath}); perr == nil {
 			res.logoInstalled = true
 		}
 	}
 
 	// Update endpoint: unseal it with the install passphrase (available now) and
-	// store it, so `caldensec update` later needs no passphrase. Best effort.
+	// store it, so `retoia update` later needs no passphrase. Best effort.
 	if ub, uerr := onboard.UnsealUpdateBase(passphrase); uerr == nil && ub != "" {
 		_ = keystore.Set(updateBaseAccount, ub)
 	}

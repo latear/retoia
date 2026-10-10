@@ -10,7 +10,7 @@ import (
 )
 
 // mcpBackupSuffix names the backup taken before writing an MCP server block.
-const mcpBackupSuffix = ".bak-calden-mcp"
+const mcpBackupSuffix = ".bak-retoia-mcp"
 
 // MCPSpec describes one MCP server as OpenCode expects it under `.mcp.<name>`.
 // A local server runs a stdio Command; a remote server is reached at URL. Only

@@ -13,7 +13,7 @@ import (
 const uninstallBackupSuffix = ".bak-retoia-uninstall"
 
 // DeleteConfigPaths removes each gjson/sjson path from the opencode.json at
-// configPath (e.g. "agent.Calden-Orchestrator", "provider.caldensec",
+// configPath (e.g. "agent.Retoia-Orchestrator", "provider.retoia",
 // "mcp.engram"), backing the file up first and restoring it if the result is
 // not valid JSON. Missing paths are skipped. Returns how many paths existed and
 // were removed.

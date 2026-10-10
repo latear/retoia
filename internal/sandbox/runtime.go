@@ -91,23 +91,23 @@ func UpCommand() (name string, args []string) {
 // progress so the output renders line-by-line on any terminal.
 func BuildEnv() []string { return []string{"BUILDKIT_PROGRESS=plain"} }
 
-// ImageExists reports whether the caldensec-sandbox image is already built.
+// ImageExists reports whether the retoia-sandbox image is already built.
 func ImageExists() bool {
-	out, err := exec.Command("docker", "images", "-q", "caldensec-sandbox").Output()
+	out, err := exec.Command("docker", "images", "-q", "retoia-sandbox").Output()
 	return err == nil && strings.TrimSpace(string(out)) != ""
 }
 
-// ContainerUp reports whether a caldensec sandbox container is currently running.
+// ContainerUp reports whether a retoia sandbox container is currently running.
 func ContainerUp() bool {
-	out, err := exec.Command("docker", "ps", "-q", "--filter", "name=caldensec").Output()
+	out, err := exec.Command("docker", "ps", "-q", "--filter", "name=retoia").Output()
 	return err == nil && strings.TrimSpace(string(out)) != ""
 }
 
-// ImageVersion returns the caldensec version stamped on the built image (the
-// caldensec.version label), or "" when unavailable.
+// ImageVersion returns the retoia version stamped on the built image (the
+// retoia.version label), or "" when unavailable.
 func ImageVersion() string {
-	out, err := exec.Command("docker", "image", "inspect", "caldensec-sandbox",
-		"--format", `{{index .Config.Labels "caldensec.version"}}`).Output()
+	out, err := exec.Command("docker", "image", "inspect", "retoia-sandbox",
+		"--format", `{{index .Config.Labels "retoia.version"}}`).Output()
 	if err != nil {
 		return ""
 	}
@@ -117,7 +117,7 @@ func ImageVersion() string {
 // ImageAge returns a short human hint of how old the built image is (e.g. "3h
 // ago", "2d ago"), or "" when unavailable.
 func ImageAge() string {
-	out, err := exec.Command("docker", "image", "inspect", "caldensec-sandbox",
+	out, err := exec.Command("docker", "image", "inspect", "retoia-sandbox",
 		"--format", "{{.Created}}").Output()
 	if err != nil {
 		return ""

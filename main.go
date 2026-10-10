@@ -1,6 +1,6 @@
-// Command caldensec is the CaldenSec tooling entry point. It dispatches to
+// Command retoia is the Reto IA tooling entry point. It dispatches to
 // subcommands, the first of which is `models`: a standalone, dependency-free
-// TUI for assigning an OpenCode model to each Calden agent, writing the
+// TUI for assigning an OpenCode model to each Retoia agent, writing the
 // change surgically into opencode.json (backup + validate, never a full
 // re-marshal).
 package main
@@ -23,18 +23,18 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	"github.com/ficopix/caldensec/internal/config"
-	"github.com/ficopix/caldensec/internal/gateway"
-	"github.com/ficopix/caldensec/internal/installer"
-	"github.com/ficopix/caldensec/internal/installtui"
-	"github.com/ficopix/caldensec/internal/keystore"
-	"github.com/ficopix/caldensec/internal/mcpservers"
-	"github.com/ficopix/caldensec/internal/onboard"
-	"github.com/ficopix/caldensec/internal/providers"
-	"github.com/ficopix/caldensec/internal/sandbox"
-	"github.com/ficopix/caldensec/internal/tui"
-	"github.com/ficopix/caldensec/internal/updater"
-	"github.com/ficopix/caldensec/internal/urlseal"
+	"github.com/retoia/retoia-cli/internal/config"
+	"github.com/retoia/retoia-cli/internal/gateway"
+	"github.com/retoia/retoia-cli/internal/installer"
+	"github.com/retoia/retoia-cli/internal/installtui"
+	"github.com/retoia/retoia-cli/internal/keystore"
+	"github.com/retoia/retoia-cli/internal/mcpservers"
+	"github.com/retoia/retoia-cli/internal/onboard"
+	"github.com/retoia/retoia-cli/internal/providers"
+	"github.com/retoia/retoia-cli/internal/sandbox"
+	"github.com/retoia/retoia-cli/internal/tui"
+	"github.com/retoia/retoia-cli/internal/updater"
+	"github.com/retoia/retoia-cli/internal/urlseal"
 )
 
 // version is the build version, set by GoReleaser via -ldflags "-X main.version=...".
@@ -44,15 +44,15 @@ var version = "dev"
 func main() {
 	installtui.Version = version // show the build version in the TUI's bottom signature
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "caldensec: "+err.Error())
+		fmt.Fprintln(os.Stderr, "retoia: "+err.Error())
 		os.Exit(1)
 	}
 }
 
-// usage is the text printed for `caldensec help`, `caldensec -h`,
-// `caldensec --help`, and no arguments at all.
-const usage = `caldensec - retoia-cli tooling
-Usage: caldensec <command> [flags]
+// usage is the text printed for `retoia help`, `retoia -h`,
+// `retoia --help`, and no arguments at all.
+const usage = `retoia - retoia-cli tooling
+Usage: retoia <command> [flags]
 
 Commands:
   install    Set up the provider/gateway and MCP servers (PATH, key)
@@ -61,13 +61,13 @@ Commands:
   mcp        List, add or remove MCP servers (engram, context7)
   sandbox    Sandbox edition (one Docker container): init | open | shell | models | uninstall
   key        Show or reset the stored gateway server key
-  update     Update caldensec to the latest signed release via the gateway
-  version    Print the caldensec version
-  seal       Seal a gateway URL for distribution (needs $CALDENSEC_UNLOCK)
-  seal-update  Seal the update endpoint URL for distribution (needs $CALDENSEC_UNLOCK)
+  update     Update retoia to the latest signed release via the gateway
+  version    Print the retoia version
+  seal       Seal a gateway URL for distribution (needs $RETOIA_UNLOCK)
+  seal-update  Seal the update endpoint URL for distribution (needs $RETOIA_UNLOCK)
   seal-template  Seal the current agent→model assignment as the install template
 
-Run 'caldensec <command> --help' for a command's flags.
+Run 'retoia <command> --help' for a command's flags.
 `
 
 // run dispatches to the requested subcommand, printing help to stdout. It
@@ -115,11 +115,11 @@ func runCLI(out io.Writer, args []string) error {
 	case "seal-template":
 		return cmdSealTemplate(os.Stdout, args[1:])
 	default:
-		return fmt.Errorf("unknown command %q (run 'caldensec help')", args[0])
+		return fmt.Errorf("unknown command %q (run 'retoia help')", args[0])
 	}
 }
 
-// cmdInstall implements the `caldensec install` subcommand: an interactive
+// cmdInstall implements the `retoia install` subcommand: an interactive
 // setup that ensures ~/.local/bin is on the PATH, configures the
 // provider/gateway and the Engram/Context7 MCP servers, and gates the model
 // assignment behind a validated gateway server key. All the real work lives in
@@ -132,8 +132,8 @@ func cmdInstall(args []string) error {
 
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
 	configPath := fs.String("config", defaultPath, "path to opencode.json")
-	providerID := fs.String("provider", "caldensec", "OpenCode provider id managed by this tool")
-	gatewayFlag := fs.String("gateway", "", "override the CaldenSec gateway base URL (default: $CALDENSEC_BASE, else the sealed gateway opened with $CALDENSEC_UNLOCK)")
+	providerID := fs.String("provider", "retoia", "OpenCode provider id managed by this tool")
+	gatewayFlag := fs.String("gateway", "", "override the Reto IA gateway base URL (default: $RETOIA_BASE, else the sealed gateway opened with $RETOIA_UNLOCK)")
 	yes := fs.Bool("yes", false, "non-interactive install (no TUI): apply with defaults; used by automation and the sandbox image")
 	engram := fs.Bool("engram", true, "with --yes: install and configure the Engram MCP")
 	context7 := fs.Bool("context7", true, "with --yes: wire the context7 docs MCP")
@@ -144,11 +144,11 @@ func cmdInstall(args []string) error {
 	// Resolve the gateway base URL. When it is sealed and no passphrase came
 	// from the environment, defer the unlock to step 0 inside the TUI instead of
 	// failing here: pass an empty base and onboard.UnsealBase as the unlocker.
-	base, err := onboard.ResolveBase(*gatewayFlag, os.Getenv("CALDENSEC_BASE"))
+	base, err := onboard.ResolveBase(*gatewayFlag, os.Getenv("RETOIA_BASE"))
 	var unlock func(string) (string, error)
 	switch {
 	case err == nil:
-		// base already known (flag, $CALDENSEC_BASE, or sealed + $CALDENSEC_UNLOCK)
+		// base already known (flag, $RETOIA_BASE, or sealed + $RETOIA_UNLOCK)
 	case errors.Is(err, onboard.ErrLocked):
 		base, unlock = "", onboard.UnsealBase
 	default:
@@ -157,9 +157,9 @@ func cmdInstall(args []string) error {
 
 	// Non-interactive path: there is no TTY to prompt on, so a still-locked
 	// gateway must be openable from the environment (or absent). The passphrase
-	// for the sealed agent templates comes from $CALDENSEC_UNLOCK.
+	// for the sealed agent templates comes from $RETOIA_UNLOCK.
 	if *yes {
-		passphrase := os.Getenv("CALDENSEC_UNLOCK")
+		passphrase := os.Getenv("RETOIA_UNLOCK")
 		if base == "" && passphrase != "" && onboard.Sealed() {
 			if b, uerr := onboard.UnsealBase(passphrase); uerr == nil {
 				base = b
@@ -180,7 +180,7 @@ func cmdInstall(args []string) error {
 	return nil
 }
 
-// notifyIfUpdate prints a one-line notice when a newer caldensec release is
+// notifyIfUpdate prints a one-line notice when a newer retoia release is
 // available. Best effort and silent on any failure (no update endpoint, offline,
 // or nothing newer), so it never disrupts an install.
 func notifyIfUpdate(out io.Writer, configPath, providerID string) {
@@ -189,11 +189,11 @@ func notifyIfUpdate(out io.Writer, configPath, providerID string) {
 		return
 	}
 	if v, newer := updater.CheckLatest(base, resolveGatewayKey(providerID, configPath), version); newer {
-		fmt.Fprintf(out, "\nA newer caldensec is available: %s — run `caldensec update`\n", v)
+		fmt.Fprintf(out, "\nA newer retoia is available: %s — run `retoia update`\n", v)
 	}
 }
 
-// cmdUninstall reverses `caldensec install`: it removes the caldensec
+// cmdUninstall reverses `retoia install`: it removes the retoia
 // provider, the Engram/Context7 MCP entries and the OpenCode credential from
 // OpenCode. With --purge it also clears the stored gateway key and removes
 // the installed binary. Custom providers you added and your shell PATH line
@@ -205,9 +205,9 @@ func cmdUninstall(args []string) error {
 	}
 	fs := flag.NewFlagSet("uninstall", flag.ContinueOnError)
 	configPath := fs.String("config", defaultPath, "path to opencode.json")
-	providerID := fs.String("provider", "caldensec", "OpenCode provider id to remove")
+	providerID := fs.String("provider", "retoia", "OpenCode provider id to remove")
 	yes := fs.Bool("yes", false, "do not ask for confirmation")
-	purge := fs.Bool("purge", false, "also clear the stored key and remove the caldensec binary")
+	purge := fs.Bool("purge", false, "also clear the stored key and remove the retoia binary")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -225,7 +225,7 @@ func cmdUninstall(args []string) error {
 		fmt.Printf("This removes provider %q, the Engram + Context7 MCP entries,\n"+
 			"the sidebar plugins and the OpenCode credential from:\n  %s\n", *providerID, *configPath)
 		if *purge {
-			fmt.Println("  …and clears the stored key and removes the caldensec binary.")
+			fmt.Println("  …and clears the stored key and removes the retoia binary.")
 		}
 		if !confirm("Continue?") {
 			fmt.Println("cancelled, nothing removed")
@@ -241,23 +241,23 @@ func cmdUninstall(args []string) error {
 
 	// TUI sidebar plugins (in tui.json, a sibling of opencode.json).
 	tuiPath := filepath.Join(filepath.Dir(*configPath), "tui.json")
-	if n, terr := installer.RemoveTUIPlugins(tuiPath, installer.CaldenTUIPlugins); terr != nil {
+	if n, terr := installer.RemoveTUIPlugins(tuiPath, installer.RetoiaTUIPlugins); terr != nil {
 		fmt.Println("note: could not clean tui.json:", terr)
 	} else if n > 0 {
 		fmt.Printf("tui.json: removed %d sidebar plugin%s\n", n, map[bool]string{true: "", false: "s"}[n == 1])
 	}
 
-	// CaldenSec OpenCode theme (themes/calden.json + the tui.json selection).
-	if terr := installer.RemoveCaldenTheme(filepath.Dir(*configPath)); terr != nil {
-		fmt.Println("note: could not remove the Calden theme:", terr)
+	// Reto IA OpenCode theme (themes/retoia.json + the tui.json selection).
+	if terr := installer.RemoveRetoiaTheme(filepath.Dir(*configPath)); terr != nil {
+		fmt.Println("note: could not remove the Retoia theme:", terr)
 	} else {
-		fmt.Println("theme: removed calden (reverted to OpenCode default)")
+		fmt.Println("theme: removed retoia (reverted to OpenCode default)")
 	}
 
-	// Backups left by the surgical writers (<file>.bak-calden*).
+	// Backups left by the surgical writers (<file>.bak-retoia*).
 	var backups int
 	for _, base := range []string{*configPath, tuiPath} {
-		if matches, _ := filepath.Glob(base + ".bak-calden*"); matches != nil {
+		if matches, _ := filepath.Glob(base + ".bak-retoia*"); matches != nil {
 			for _, m := range matches {
 				if os.Remove(m) == nil {
 					backups++
@@ -281,7 +281,7 @@ func cmdUninstall(args []string) error {
 			fmt.Println("stored key: cleared")
 		}
 		_ = keystore.Delete(updateBaseAccount) // stored update endpoint URL
-		bin := filepath.Join(home, ".local", "bin", "caldensec")
+		bin := filepath.Join(home, ".local", "bin", "retoia")
 		if err := os.Remove(bin); err == nil {
 			fmt.Println("binary: removed " + bin)
 		}
@@ -291,13 +291,13 @@ func cmdUninstall(args []string) error {
 	return nil
 }
 
-// resolvePassphrase returns the install passphrase: $CALDENSEC_UNLOCK when set
+// resolvePassphrase returns the install passphrase: $RETOIA_UNLOCK when set
 // (for automation/CI), otherwise it prompts on the terminal WITHOUT echoing, so
 // the passphrase never has to live in an environment variable or shell history.
 // The no-echo toggle is best-effort (Unix `stty`); if it is unavailable the read
 // still works, just echoed.
 func resolvePassphrase(prompt string) (string, error) {
-	if v := os.Getenv("CALDENSEC_UNLOCK"); v != "" {
+	if v := os.Getenv("RETOIA_UNLOCK"); v != "" {
 		return v, nil
 	}
 	fmt.Fprint(os.Stderr, prompt)
@@ -336,20 +336,20 @@ func plural(n int) string {
 	return "ies"
 }
 
-const mcpUsage = `caldensec mcp - manage MCP servers wired into OpenCode
+const mcpUsage = `retoia mcp - manage MCP servers wired into OpenCode
 
 Usage:
-  caldensec mcp list                         show configured servers and the catalog
-  caldensec mcp add <catalog-id>             add a curated server (wires it into opencode.json)
-  caldensec mcp add <name> -- <cmd> [args…]  add a custom local stdio server
-  caldensec mcp add <name> --remote <url>    add a custom remote server
-  caldensec mcp setup <catalog-id>           run a server's install steps (e.g. build its Docker backend), then wire it
-  caldensec mcp remove <name>                remove a server
+  retoia mcp list                         show configured servers and the catalog
+  retoia mcp add <catalog-id>             add a curated server (wires it into opencode.json)
+  retoia mcp add <name> -- <cmd> [args…]  add a custom local stdio server
+  retoia mcp add <name> --remote <url>    add a custom remote server
+  retoia mcp setup <catalog-id>           run a server's install steps (e.g. build its Docker backend), then wire it
+  retoia mcp remove <name>                remove a server
 
-'setup' flags: --dir <workdir> (default ~/.caldensec/mcp), --dry-run (print the
+'setup' flags: --dir <workdir> (default ~/.retoia/mcp), --dry-run (print the
 plan only), --yes (skip the confirmation).`
 
-// mcpFlags holds the recognized `caldensec mcp` flags.
+// mcpFlags holds the recognized `retoia mcp` flags.
 type mcpFlags struct {
 	config string
 	remote string
@@ -423,7 +423,7 @@ func mcpConfigPath(f mcpFlags) (string, error) {
 	return defaultConfigPath()
 }
 
-// cmdMCP implements `caldensec mcp`: list, add, or remove MCP servers. MCP
+// cmdMCP implements `retoia mcp`: list, add, or remove MCP servers. MCP
 // servers extend the agents with tools (e.g. library docs via context7), wired
 // the same way Engram is. It writes surgically into opencode.json (backup+validate).
 func cmdMCP(out io.Writer, args []string) error {
@@ -445,7 +445,7 @@ func cmdMCP(out io.Writer, args []string) error {
 		fmt.Fprintln(out, mcpUsage)
 		return nil
 	default:
-		return fmt.Errorf("unknown 'mcp' action %q (run 'caldensec mcp help')", action)
+		return fmt.Errorf("unknown 'mcp' action %q (run 'retoia mcp help')", action)
 	}
 }
 
@@ -473,7 +473,7 @@ func cmdMCPList(out io.Writer, args []string) error {
 		fmt.Fprintln(out, "  • "+n)
 	}
 
-	fmt.Fprintln(out, "\nCatalog (add with 'caldensec mcp add <id>'):")
+	fmt.Fprintln(out, "\nCatalog (add with 'retoia mcp add <id>'):")
 	for _, s := range mcpservers.Catalog() {
 		suffix := ""
 		switch {
@@ -502,7 +502,7 @@ func cmdMCPAdd(out io.Writer, args []string) error {
 		return err
 	}
 	if len(rest) == 0 {
-		return fmt.Errorf("need a catalog id or a server name (run 'caldensec mcp help')")
+		return fmt.Errorf("need a catalog id or a server name (run 'retoia mcp help')")
 	}
 	name := rest[0]
 
@@ -531,7 +531,7 @@ func cmdMCPAdd(out io.Writer, args []string) error {
 	// Catalog server by id.
 	s, ok := mcpservers.Find(name)
 	if !ok {
-		return fmt.Errorf("no catalog server %q; run 'caldensec mcp list', or add a custom one with '-- <cmd>' or '--remote <url>'", name)
+		return fmt.Errorf("no catalog server %q; run 'retoia mcp list', or add a custom one with '-- <cmd>' or '--remote <url>'", name)
 	}
 	// Manual server: cannot be auto-wired; point at its repo and setup note.
 	if s.Manual() {
@@ -634,15 +634,15 @@ func cmdMCPSetup(out io.Writer, args []string) error {
 		}
 	}
 	if len(pos) == 0 {
-		return fmt.Errorf("need a catalog id (run 'caldensec mcp list')")
+		return fmt.Errorf("need a catalog id (run 'retoia mcp list')")
 	}
 	s, ok := mcpservers.Find(pos[0])
 	if !ok {
-		return fmt.Errorf("no catalog server %q (run 'caldensec mcp list')", pos[0])
+		return fmt.Errorf("no catalog server %q (run 'retoia mcp list')", pos[0])
 	}
 	if !s.NeedsSetup() {
 		if s.Wireable() {
-			return fmt.Errorf("%s needs no setup; add it directly with 'caldensec mcp add %s'", s.ID, s.ID)
+			return fmt.Errorf("%s needs no setup; add it directly with 'retoia mcp add %s'", s.ID, s.ID)
 		}
 		return fmt.Errorf("%s cannot be set up automatically; see %s", s.ID, s.RepoURL)
 	}
@@ -659,7 +659,7 @@ func cmdMCPSetup(out io.Writer, args []string) error {
 		if err != nil {
 			return err
 		}
-		workDir = filepath.Join(home, ".caldensec", "mcp")
+		workDir = filepath.Join(home, ".retoia", "mcp")
 	}
 
 	// Prerequisite check.
@@ -738,7 +738,7 @@ func okMark(ok bool) string {
 }
 
 // cmdSandbox scaffolds the sandbox edition: a single Docker container (Kali
-// base) with OpenCode + the Calden suite installed inside, so the host OpenCode
+// base) with OpenCode + the Retoia suite installed inside, so the host OpenCode
 // is never touched. It writes the artifacts (Dockerfile, compose, entrypoint)
 // into the target dir and prints the build/run steps; the docker build itself is
 // left to the user (this tool does not run Docker).
@@ -770,7 +770,7 @@ func cmdSandbox(out io.Writer, args []string) error {
 // plain progress output — a terminal-agnostic path that avoids the install
 // wizard's full-screen handoff (which can render as a blank over some SSH
 // terminals). It refreshes the Docker scaffold in place and keeps the already
-// baked Calden config (a full config refresh needs the install passphrase).
+// baked Retoia config (a full config refresh needs the install passphrase).
 func cmdSandboxRebuild(out io.Writer, args []string) error {
 	fs := flag.NewFlagSet("sandbox rebuild", flag.ContinueOnError)
 	dir := fs.String("dir", ".", "directory holding the sandbox artifacts")
@@ -778,32 +778,32 @@ func cmdSandboxRebuild(out io.Writer, args []string) error {
 		return err
 	}
 	if _, err := os.Stat(filepath.Join(*dir, "compose.sandbox.yaml")); err != nil {
-		return fmt.Errorf("no sandbox in %s — run `caldensec install` and pick Sandbox first", *dir)
+		return fmt.Errorf("no sandbox in %s — run `retoia install` and pick Sandbox first", *dir)
 	}
 	if _, err := os.Stat(filepath.Join(*dir, "opencode-config")); err != nil {
-		return fmt.Errorf("no opencode-config/ in %s — run `caldensec install` and pick Sandbox to generate it", *dir)
+		return fmt.Errorf("no opencode-config/ in %s — run `retoia install` and pick Sandbox to generate it", *dir)
 	}
 	if !sandbox.DockerReady() {
 		return fmt.Errorf("Docker is not running — start it (macOS: `colima start`), then retry")
 	}
 	// Refresh the Docker scaffold (Dockerfile/compose/entrypoint) in place; keep
-	// the baked Calden config as-is.
+	// the baked Retoia config as-is.
 	if _, err := sandbox.Write(*dir); err != nil {
 		return fmt.Errorf("refreshing the sandbox scaffold: %w", err)
 	}
-	serverKey := onboard.ResolveServerKey(os.Getenv("CALDENSEC_API_KEY"), keystore.Get)
+	serverKey := onboard.ResolveServerKey(os.Getenv("RETOIA_API_KEY"), keystore.Get)
 	name, bargs := sandbox.UpCommand()
 	bargs = append(bargs, "--force-recreate")
 	fmt.Fprintln(out, "Rebuilding the sandbox (plain output; a few minutes on a cold cache)…")
 	cmd := exec.Command(name, bargs...)
 	cmd.Dir = *dir
-	cmd.Env = append(os.Environ(), "CALDENSEC_API_KEY="+serverKey, "CALDENSEC_VERSION="+version)
+	cmd.Env = append(os.Environ(), "RETOIA_API_KEY="+serverKey, "RETOIA_VERSION="+version)
 	cmd.Env = append(cmd.Env, sandbox.BuildEnv()...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("rebuilding the sandbox (%s %s): %w", name, strings.Join(bargs, " "), err)
 	}
-	fmt.Fprintln(out, "\nSandbox rebuilt. Open it with: caldensec sandbox open")
+	fmt.Fprintln(out, "\nSandbox rebuilt. Open it with: retoia sandbox open")
 	return nil
 }
 
@@ -842,7 +842,7 @@ func cmdSandboxAttach(args []string, opencode bool) error {
 	if _, err := os.Stat(compose); err != nil {
 		return fmt.Errorf("no compose.sandbox.yaml in %q — run this from your sandbox directory (or pass --dir)", dir)
 	}
-	inner := []string{"compose", "-f", compose, "exec", "caldensec"}
+	inner := []string{"compose", "-f", compose, "exec", "retoia"}
 	if opencode {
 		// Force a pty inside the container so the TUI renders reliably.
 		inner = append(inner, "script", "-qec", "opencode", "/dev/null")
@@ -855,13 +855,13 @@ func cmdSandboxAttach(args []string, opencode bool) error {
 }
 
 // cmdSandboxUninstall tears the sandbox down: `docker compose down` removes the
-// container and its network; --rmi also removes the caldensec-sandbox image and
+// container and its network; --rmi also removes the retoia-sandbox image and
 // --purge deletes the generated scaffold. The mounted sandbox-work/ is always
 // kept — it holds the user's work.
 func cmdSandboxUninstall(out io.Writer, args []string) error {
 	fs := flag.NewFlagSet("sandbox uninstall", flag.ContinueOnError)
 	dir := fs.String("dir", ".", "directory holding the sandbox artifacts")
-	rmi := fs.Bool("rmi", false, "also remove the caldensec-sandbox image")
+	rmi := fs.Bool("rmi", false, "also remove the retoia-sandbox image")
 	purge := fs.Bool("purge", false, "also delete the generated scaffold (keeps sandbox-work/)")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -880,8 +880,8 @@ func cmdSandboxUninstall(out io.Writer, args []string) error {
 			fmt.Fprintln(out, "  (compose down failed — container may already be removed)")
 		}
 		if *rmi {
-			fmt.Fprintln(out, "Removing the caldensec-sandbox image…")
-			if err := runDocker(out, "rmi", "caldensec-sandbox"); err != nil {
+			fmt.Fprintln(out, "Removing the retoia-sandbox image…")
+			if err := runDocker(out, "rmi", "retoia-sandbox"); err != nil {
 				fmt.Fprintln(out, "  (image not present or still in use — skipped)")
 			}
 		}
@@ -898,12 +898,12 @@ func cmdSandboxUninstall(out io.Writer, args []string) error {
 
 // cmdSandboxModels opens the per-agent model picker on the sandbox's baked
 // config (opencode-config/opencode.json) and then rebuilds the container so the
-// new assignment is baked in. It is the sandbox counterpart of `caldensec
+// new assignment is baked in. It is the sandbox counterpart of `retoia
 // models`, which otherwise targets the host config. --no-build edits only.
 func cmdSandboxModels(out io.Writer, args []string) error {
 	fs := flag.NewFlagSet("sandbox models", flag.ContinueOnError)
 	dir := fs.String("dir", ".", "directory holding the sandbox artifacts")
-	providerID := fs.String("provider", "caldensec", "OpenCode provider id managed by this tool")
+	providerID := fs.String("provider", "retoia", "OpenCode provider id managed by this tool")
 	noBuild := fs.Bool("no-build", false, "edit the config only; skip the container rebuild")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -911,7 +911,7 @@ func cmdSandboxModels(out io.Writer, args []string) error {
 
 	cfg := filepath.Join(*dir, "opencode-config", "opencode.json")
 	if _, err := os.Stat(cfg); err != nil {
-		return fmt.Errorf("no opencode-config/opencode.json in %q — run `caldensec install` → Sandbox first (or pass --dir)", *dir)
+		return fmt.Errorf("no opencode-config/opencode.json in %q — run `retoia install` → Sandbox first (or pass --dir)", *dir)
 	}
 
 	// Reuse the standard per-agent picker, pointed at the staged config. It reads
@@ -938,7 +938,7 @@ func cmdSandboxModels(out io.Writer, args []string) error {
 	if err := runDocker(out, "compose", "-f", compose, "up", "-d", "--build"); err != nil {
 		return fmt.Errorf("rebuilding the sandbox: %w", err)
 	}
-	fmt.Fprintln(out, "Done. Enter it with:  caldensec sandbox open")
+	fmt.Fprintln(out, "Done. Enter it with:  retoia sandbox open")
 	return nil
 }
 
@@ -954,7 +954,7 @@ func runDocker(out io.Writer, args ...string) error {
 func purgeSandboxArtifacts(out io.Writer, dir string) []string {
 	var removed []string
 	for _, n := range []string{
-		"Dockerfile.sandbox", "compose.sandbox.yaml", "caldensec-entrypoint.sh",
+		"Dockerfile.sandbox", "compose.sandbox.yaml", "retoia-entrypoint.sh",
 		"SANDBOX.md", ".dockerignore", "opencode-config",
 	} {
 		p := filepath.Join(dir, n)
@@ -1012,7 +1012,7 @@ func parseEnv(pairs []string) (map[string]string, error) {
 	return env, nil
 }
 
-// cmdModels implements the `caldensec models` subcommand. The gateway server
+// cmdModels implements the `retoia models` subcommand. The gateway server
 // key is now mandatory: models are discovered gateway-first and the picker is
 // gated behind a validated key. No model name is ever shown before a key has
 // been entered AND validated — in the interactive flow the picker only opens
@@ -1026,8 +1026,8 @@ func cmdModels(args []string) error {
 
 	fs := flag.NewFlagSet("models", flag.ContinueOnError)
 	configPath := fs.String("config", defaultPath, "path to opencode.json")
-	providerID := fs.String("provider", "caldensec", "OpenCode provider id managed by this tool")
-	gatewayFlag := fs.String("gateway", "", "override the CaldenSec gateway base URL (default: $CALDENSEC_BASE, else the sealed gateway opened with $CALDENSEC_UNLOCK)")
+	providerID := fs.String("provider", "retoia", "OpenCode provider id managed by this tool")
+	gatewayFlag := fs.String("gateway", "", "override the Reto IA gateway base URL (default: $RETOIA_BASE, else the sealed gateway opened with $RETOIA_UNLOCK)")
 	listOnly := fs.Bool("list", false, "print the managed agents and authorized models, then exit (needs a valid server key; no TUI, no changes)")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -1043,25 +1043,25 @@ func cmdModels(args []string) error {
 		return fmt.Errorf("no agents bound to provider %q found in %s", *providerID, *configPath)
 	}
 
-	// Resolve the gateway base URL. Precedence: --gateway, $CALDENSEC_BASE, the
-	// sealed URL (via $CALDENSEC_UNLOCK), and finally the baseURL OpenCode
+	// Resolve the gateway base URL. Precedence: --gateway, $RETOIA_BASE, the
+	// sealed URL (via $RETOIA_UNLOCK), and finally the baseURL OpenCode
 	// already has in opencode.json — written at install once the sealed URL was
 	// unlocked — so daily use needs no passphrase.
 	// Resolve the gateway base URL (best effort). Precedence: --gateway,
-	// $CALDENSEC_BASE, the sealed URL, then opencode.json's provider baseURL. When
+	// $RETOIA_BASE, the sealed URL, then opencode.json's provider baseURL. When
 	// none resolves, do NOT fail — fall through to the interactive menu, where the
 	// user can enter a key or add their own OpenAI-compatible provider/models.
-	base, berr := onboard.ResolveBase(*gatewayFlag, os.Getenv("CALDENSEC_BASE"))
+	base, berr := onboard.ResolveBase(*gatewayFlag, os.Getenv("RETOIA_BASE"))
 	if berr != nil {
 		base = cfg.ProviderBaseURL() // "" when there is no gateway configured at all
 	}
-	key := onboard.ResolveServerKey(os.Getenv("CALDENSEC_API_KEY"), keystore.Get)
+	key := onboard.ResolveServerKey(os.Getenv("RETOIA_API_KEY"), keystore.Get)
 
 	// --list is non-interactive: it requires an already-valid key and prints
 	// nothing about models unless validation succeeds.
 	if *listOnly {
 		if base == "" || key == "" {
-			return fmt.Errorf("no gateway or server key: run 'caldensec models' (without --list) to enter one or add your own models")
+			return fmt.Errorf("no gateway or server key: run 'retoia models' (without --list) to enter one or add your own models")
 		}
 		models, err := gateway.ValidateKey(base, key)
 		if err != nil {
@@ -1172,7 +1172,7 @@ func defaultAuthPath() string {
 	return filepath.Join(home, ".local", "share", "opencode", "auth.json")
 }
 
-// cmdUpdate implements `caldensec update`: it fetches the signed manifest from
+// cmdUpdate implements `retoia update`: it fetches the signed manifest from
 // the key-gated update endpoint derived from the configured gateway, verifies
 // the release for this platform, and replaces the running binary. No GitHub
 // access is needed — the gateway key is the gate. With --keygen it only prints a
@@ -1184,7 +1184,7 @@ func cmdUpdate(out io.Writer, args []string) error {
 	}
 	fs := flag.NewFlagSet("update", flag.ContinueOnError)
 	configPath := fs.String("config", defaultPath, "path to opencode.json")
-	providerID := fs.String("provider", "caldensec", "OpenCode provider id managed by this tool")
+	providerID := fs.String("provider", "retoia", "OpenCode provider id managed by this tool")
 	keygen := fs.Bool("keygen", false, "generate an Ed25519 signing key pair for release signing and exit")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -1205,10 +1205,10 @@ func cmdUpdate(out io.Writer, args []string) error {
 }
 
 // resolveUpdateBase finds the update endpoint without a passphrase:
-// $CALDENSEC_UPDATE_BASE, then the URL stored at install (sealed update base,
+// $RETOIA_UPDATE_BASE, then the URL stored at install (sealed update base,
 // unsealed into the keystore), then the gateway host from opencode.json.
 func resolveUpdateBase(configPath, providerID string) (string, error) {
-	if v := strings.TrimRight(os.Getenv("CALDENSEC_UPDATE_BASE"), "/"); v != "" {
+	if v := strings.TrimRight(os.Getenv("RETOIA_UPDATE_BASE"), "/"); v != "" {
 		return v, nil
 	}
 	if v, err := keystore.Get(updateBaseAccount); err == nil && v != "" {
@@ -1222,21 +1222,21 @@ func resolveUpdateBase(configPath, providerID string) (string, error) {
 	// Last resort: unseal the endpoint baked into the binary with the install
 	// passphrase, and remember it so a later update needs no passphrase. This
 	// covers a client whose install never stored the base (no gateway staged).
-	if pass := strings.TrimSpace(os.Getenv("CALDENSEC_UNLOCK")); pass != "" {
+	if pass := strings.TrimSpace(os.Getenv("RETOIA_UNLOCK")); pass != "" {
 		if ub, err := onboard.UnsealUpdateBase(pass); err == nil && ub != "" {
 			_ = keystore.Set(updateBaseAccount, ub)
 			return strings.TrimRight(ub, "/"), nil
 		}
 	}
-	return "", fmt.Errorf("could not locate the update endpoint: set $CALDENSEC_UPDATE_BASE=<url>, " +
-		"or $CALDENSEC_UNLOCK=<passphrase> to use the endpoint sealed into this binary, " +
+	return "", fmt.Errorf("could not locate the update endpoint: set $RETOIA_UPDATE_BASE=<url>, " +
+		"or $RETOIA_UNLOCK=<passphrase> to use the endpoint sealed into this binary, " +
 		"or configure the gateway in opencode.json")
 }
 
-// resolveGatewayKey finds the gateway key without prompting: $CALDENSEC_API_KEY,
-// then the caldensec keystore, then OpenCode's auth.json. Returns "" if none.
+// resolveGatewayKey finds the gateway key without prompting: $RETOIA_API_KEY,
+// then the retoia keystore, then OpenCode's auth.json. Returns "" if none.
 func resolveGatewayKey(providerID, configPath string) string {
-	if v := os.Getenv("CALDENSEC_API_KEY"); v != "" {
+	if v := os.Getenv("RETOIA_API_KEY"); v != "" {
 		return v
 	}
 	if v, err := keystore.Get(keyAccount); err == nil && v != "" {
@@ -1282,7 +1282,7 @@ func updateKeygen(out io.Writer) error {
 // aggregateModels combines the gateway (primary provider) models with the models
 // of every other provider present in opencode.json, tagging each with its
 // provider and — for custom providers — its display name as the category, so
-// the picker groups them like Calden/Cloud.
+// the picker groups them like Retoia/Cloud.
 func aggregateModels(cfg *config.Config, primary string, gateway []config.Model) []config.Model {
 	out := make([]config.Model, 0, len(gateway))
 	for _, m := range gateway {
@@ -1309,7 +1309,7 @@ func aggregateModels(cfg *config.Config, primary string, gateway []config.Model)
 // stored (matches internal/onboard).
 const keyAccount = "gateway"
 
-// cmdKey implements `caldensec key`: with no flag it reports where the server
+// cmdKey implements `retoia key`: with no flag it reports where the server
 // key resolves from; with --reset it clears the stored key.
 func cmdKey(args []string) error {
 	fs := flag.NewFlagSet("key", flag.ContinueOnError)
@@ -1318,7 +1318,7 @@ func cmdKey(args []string) error {
 		return err
 	}
 
-	env := os.Getenv("CALDENSEC_API_KEY")
+	env := os.Getenv("RETOIA_API_KEY")
 
 	if *reset {
 		if err := keystore.Delete(keyAccount); err != nil {
@@ -1326,8 +1326,8 @@ func cmdKey(args []string) error {
 		}
 		fmt.Println("Stored gateway server key cleared.")
 		if env != "" {
-			fmt.Println("Note: $CALDENSEC_API_KEY is set in your environment and still takes precedence.")
-			fmt.Println("  Drop it with:  unset CALDENSEC_API_KEY")
+			fmt.Println("Note: $RETOIA_API_KEY is set in your environment and still takes precedence.")
+			fmt.Println("  Drop it with:  unset RETOIA_API_KEY")
 		}
 		return nil
 	}
@@ -1340,8 +1340,8 @@ func cmdKey(args []string) error {
 	return nil
 }
 
-// cmdSeal implements `caldensec seal <gateway-url>`: a distributor-only helper
-// that encrypts the gateway URL under the passphrase in $CALDENSEC_UNLOCK and
+// cmdSeal implements `retoia seal <gateway-url>`: a distributor-only helper
+// that encrypts the gateway URL under the passphrase in $RETOIA_UNLOCK and
 // prints a ready-to-paste `var sealedBase = "..."` for internal/onboard/sealed.go.
 // The passphrase is then shared out-of-band with whoever may install.
 func cmdSeal(out io.Writer, args []string) error {
@@ -1350,7 +1350,7 @@ func cmdSeal(out io.Writer, args []string) error {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return fmt.Errorf("usage: caldensec seal <gateway-url>  (prompts for the passphrase, or set $CALDENSEC_UNLOCK)")
+		return fmt.Errorf("usage: retoia seal <gateway-url>  (prompts for the passphrase, or set $RETOIA_UNLOCK)")
 	}
 
 	pass, err := resolvePassphrase("Passphrase to seal the gateway URL: ")
@@ -1370,10 +1370,10 @@ func cmdSeal(out io.Writer, args []string) error {
 }
 
 // updateBaseAccount is the keystore account holding the (unsealed) update
-// endpoint URL, written at install so `caldensec update` needs no passphrase.
+// endpoint URL, written at install so `retoia update` needs no passphrase.
 const updateBaseAccount = "update-base"
 
-// cmdSealUpdate implements `caldensec seal-update <url>`: seals the update
+// cmdSealUpdate implements `retoia seal-update <url>`: seals the update
 // endpoint URL with the install passphrase and prints a ready-to-paste
 // `var sealedUpdateBase = "..."` for internal/onboard/sealed.go.
 func cmdSealUpdate(out io.Writer, args []string) error {
@@ -1382,7 +1382,7 @@ func cmdSealUpdate(out io.Writer, args []string) error {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return fmt.Errorf("usage: caldensec seal-update <update-url>  (prompts for the passphrase, or set $CALDENSEC_UNLOCK)")
+		return fmt.Errorf("usage: retoia seal-update <update-url>  (prompts for the passphrase, or set $RETOIA_UNLOCK)")
 	}
 	pass, err := resolvePassphrase("Passphrase to seal the update URL: ")
 	if err != nil {
@@ -1399,10 +1399,10 @@ func cmdSealUpdate(out io.Writer, args []string) error {
 }
 
 // cmdSealTemplate reads the current opencode.json, captures each managed
-// agent's assigned model, seals that agent→model map (with $CALDENSEC_UNLOCK),
+// agent's assigned model, seals that agent→model map (with $RETOIA_UNLOCK),
 // and prints a ready-to-paste `var sealedTemplate = "..."`. On install, after
 // unlocking, agents get these models automatically — with the real names sealed,
-// never in the repo. Set up the agents the way you want (caldensec models) first.
+// never in the repo. Set up the agents the way you want (retoia models) first.
 func cmdSealTemplate(out io.Writer, args []string) error {
 	defaultPath, err := defaultConfigPath()
 	if err != nil {
@@ -1410,16 +1410,16 @@ func cmdSealTemplate(out io.Writer, args []string) error {
 	}
 	fs := flag.NewFlagSet("seal-template", flag.ContinueOnError)
 	configPath := fs.String("config", defaultPath, "path to opencode.json")
-	providerID := fs.String("provider", "caldensec", "OpenCode provider id")
-	slot := fs.String("slot", "calden", "which template slot to seal: calden, cloud or both")
+	providerID := fs.String("provider", "retoia", "OpenCode provider id")
+	slot := fs.String("slot", "retoia", "which template slot to seal: retoia, cloud or both")
 	fromJSON := fs.String("from-json", "", `agent→model JSON to seal (e.g. '{"my-agent":"..."}'); default: read the current assignments`)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if *slot != "calden" && *slot != "cloud" && *slot != "both" {
-		return fmt.Errorf("--slot must be calden, cloud or both, got %q", *slot)
+	if *slot != "retoia" && *slot != "cloud" && *slot != "both" {
+		return fmt.Errorf("--slot must be retoia, cloud or both, got %q", *slot)
 	}
-	pass, err := resolvePassphrase("CaldenSec install passphrase: ")
+	pass, err := resolvePassphrase("Reto IA install passphrase: ")
 	if err != nil {
 		return err
 	}
@@ -1442,7 +1442,7 @@ func cmdSealTemplate(out io.Writer, args []string) error {
 		}
 	}
 	if len(tmpl) == 0 {
-		return fmt.Errorf("no agent→model assignments (pass --from-json or assign models first with 'caldensec models')")
+		return fmt.Errorf("no agent→model assignments (pass --from-json or assign models first with 'retoia models')")
 	}
 
 	raw, err := json.Marshal(tmpl)
@@ -1454,7 +1454,7 @@ func cmdSealTemplate(out io.Writer, args []string) error {
 		return fmt.Errorf("sealing template: %w", err)
 	}
 
-	varName := "sealedAgentsCalden"
+	varName := "sealedAgentsRetoia"
 	switch *slot {
 	case "cloud":
 		varName = "sealedAgentsCloud"
@@ -1477,15 +1477,15 @@ func cmdSealTemplate(out io.Writer, args []string) error {
 func keyStatus(env, stored string) string {
 	switch {
 	case env != "":
-		return fmt.Sprintf("Server key: using $CALDENSEC_API_KEY (env) - %s\n"+
-			"This shadows the stored key. Drop the override with 'unset CALDENSEC_API_KEY';\n"+
-			"clear the stored one with 'caldensec key --reset'.\n", keystore.Mask(env))
+		return fmt.Sprintf("Server key: using $RETOIA_API_KEY (env) - %s\n"+
+			"This shadows the stored key. Drop the override with 'unset RETOIA_API_KEY';\n"+
+			"clear the stored one with 'retoia key --reset'.\n", keystore.Mask(env))
 	case stored != "":
 		return fmt.Sprintf("Server key: stored in the keychain - %s\n"+
-			"Replace it by running 'caldensec install' (or 'caldensec models') and entering a new one,\n"+
-			"or clear it with 'caldensec key --reset'.\n", keystore.Mask(stored))
+			"Replace it by running 'retoia install' (or 'retoia models') and entering a new one,\n"+
+			"or clear it with 'retoia key --reset'.\n", keystore.Mask(stored))
 	default:
-		return "Server key: none stored. 'caldensec install' or 'caldensec models' will prompt for one.\n"
+		return "Server key: none stored. 'retoia install' or 'retoia models' will prompt for one.\n"
 	}
 }
 

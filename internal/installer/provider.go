@@ -9,11 +9,11 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
-	"github.com/ficopix/caldensec/internal/config"
+	"github.com/retoia/retoia-cli/internal/config"
 )
 
 // providerBackupSuffix names the backup taken before writing a provider block.
-const providerBackupSuffix = ".bak-calden-provider"
+const providerBackupSuffix = ".bak-retoia-provider"
 
 // Default per-model token limits written when a model carries none. The gateway
 // does not report context windows, so these are conservative starting values the
@@ -24,14 +24,14 @@ const (
 )
 
 // defaultModelLimits returns the context/output limits to use for a model that
-// carries none, honoring the CALDENSEC_CONTEXT_LIMIT / CALDENSEC_OUTPUT_LIMIT
+// carries none, honoring the RETOIA_CONTEXT_LIMIT / RETOIA_OUTPUT_LIMIT
 // environment overrides when they are positive integers.
 func defaultModelLimits() (context, output int) {
 	context, output = defaultContextLimit, defaultOutputLimit
-	if v, err := strconv.Atoi(os.Getenv("CALDENSEC_CONTEXT_LIMIT")); err == nil && v > 0 {
+	if v, err := strconv.Atoi(os.Getenv("RETOIA_CONTEXT_LIMIT")); err == nil && v > 0 {
 		context = v
 	}
-	if v, err := strconv.Atoi(os.Getenv("CALDENSEC_OUTPUT_LIMIT")); err == nil && v > 0 {
+	if v, err := strconv.Atoi(os.Getenv("RETOIA_OUTPUT_LIMIT")); err == nil && v > 0 {
 		output = v
 	}
 	return context, output
@@ -82,7 +82,7 @@ func AddProvider(configPath, providerID, baseURL string, models []config.Model) 
 	// custom provider to count context and run compaction. Per-model limits come
 	// from the gateway's /model/info (max_input_tokens / max_output_tokens) when
 	// it publishes them; a conservative default is written for any model that
-	// carries none (overridable via CALDENSEC_CONTEXT_LIMIT / CALDENSEC_OUTPUT_LIMIT,
+	// carries none (overridable via RETOIA_CONTEXT_LIMIT / RETOIA_OUTPUT_LIMIT,
 	// and freely editable per model in opencode.json).
 	ctxLimit, outLimit := defaultModelLimits()
 	modelsMap := make(map[string]any, len(models))

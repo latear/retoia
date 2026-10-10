@@ -16,12 +16,12 @@ func TestDeleteConfigPaths(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	must(AddProvider(cfg, "caldensec", "https://gw/v1", nil))
+	must(AddProvider(cfg, "retoia", "https://gw/v1", nil))
 	must(ConfigureEngramMCP(cfg, "/opt/homebrew/bin/engram"))
 
 	paths := []string{
-		"agent.Calden-Orchestrator",
-		"provider.caldensec", "mcp.engram",
+		"agent.Retoia-Orchestrator",
+		"provider.retoia", "mcp.engram",
 		"agent.does-not-exist", // skipped
 	}
 	n, err := DeleteConfigPaths(cfg, paths)
@@ -35,7 +35,7 @@ func TestDeleteConfigPaths(t *testing.T) {
 	if !gjson.ValidBytes(data) {
 		t.Fatal("result is not valid JSON")
 	}
-	for _, p := range []string{"agent.Calden-Orchestrator", "provider.caldensec", "mcp.engram"} {
+	for _, p := range []string{"agent.Retoia-Orchestrator", "provider.retoia", "mcp.engram"} {
 		if gjson.GetBytes(data, p).Exists() {
 			t.Errorf("%s still present after removal", p)
 		}
@@ -54,22 +54,22 @@ func TestDeleteConfigPathsMissingFile(t *testing.T) {
 
 func TestRemoveOpenCodeCredential(t *testing.T) {
 	authPath := filepath.Join(t.TempDir(), "auth.json")
-	seed := `{"openai":{"type":"api","key":"sk-o"},"caldensec":{"type":"api","key":"sk-c"}}`
+	seed := `{"openai":{"type":"api","key":"sk-o"},"retoia":{"type":"api","key":"sk-c"}}`
 	if err := os.WriteFile(authPath, []byte(seed), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := RemoveOpenCodeCredential(authPath, "caldensec"); err != nil {
+	if err := RemoveOpenCodeCredential(authPath, "retoia"); err != nil {
 		t.Fatalf("RemoveOpenCodeCredential: %v", err)
 	}
 	data, _ := os.ReadFile(authPath)
-	if gjson.GetBytes(data, "caldensec").Exists() {
-		t.Error("caldensec credential still present")
+	if gjson.GetBytes(data, "retoia").Exists() {
+		t.Error("retoia credential still present")
 	}
 	if !gjson.GetBytes(data, "openai").Exists() {
 		t.Error("openai credential was wrongly removed")
 	}
 	// No-op when absent.
-	if err := RemoveOpenCodeCredential(authPath, "caldensec"); err != nil {
+	if err := RemoveOpenCodeCredential(authPath, "retoia"); err != nil {
 		t.Errorf("second removal should be a no-op, got %v", err)
 	}
 }

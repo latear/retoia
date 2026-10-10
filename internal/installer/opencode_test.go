@@ -13,7 +13,7 @@ func TestSetProviderBaseURL(t *testing.T) {
 	cfg := copySample(t)
 	const want = "https://gateway.example/v1"
 
-	if err := SetProviderBaseURL(cfg, "caldensec", want); err != nil {
+	if err := SetProviderBaseURL(cfg, "retoia", want); err != nil {
 		t.Fatalf("SetProviderBaseURL: %v", err)
 	}
 
@@ -24,11 +24,11 @@ func TestSetProviderBaseURL(t *testing.T) {
 	if !gjson.ValidBytes(data) {
 		t.Fatal("result is not valid JSON")
 	}
-	if got := gjson.GetBytes(data, "provider.caldensec.options.baseURL").String(); got != want {
+	if got := gjson.GetBytes(data, "provider.retoia.options.baseURL").String(); got != want {
 		t.Errorf("baseURL = %q, want %q", got, want)
 	}
 	// Existing provider models survive.
-	if !gjson.GetBytes(data, "provider.caldensec.models.model-a").Exists() {
+	if !gjson.GetBytes(data, "provider.retoia.models.model-a").Exists() {
 		t.Error("existing provider models were lost")
 	}
 	if _, err := os.Stat(cfg + baseURLBackupSuffix); err != nil {
@@ -39,7 +39,7 @@ func TestSetProviderBaseURL(t *testing.T) {
 func TestSetOpenCodeCredential_NewFile(t *testing.T) {
 	authPath := filepath.Join(t.TempDir(), "share", "opencode", "auth.json")
 
-	if err := SetOpenCodeCredential(authPath, "caldensec", "sk-newkey123"); err != nil {
+	if err := SetOpenCodeCredential(authPath, "retoia", "sk-newkey123"); err != nil {
 		t.Fatalf("SetOpenCodeCredential: %v", err)
 	}
 
@@ -52,32 +52,32 @@ func TestSetOpenCodeCredential_NewFile(t *testing.T) {
 	}
 
 	data, _ := os.ReadFile(authPath)
-	if got := gjson.GetBytes(data, "caldensec.type").String(); got != "api" {
-		t.Errorf("caldensec.type = %q, want api", got)
+	if got := gjson.GetBytes(data, "retoia.type").String(); got != "api" {
+		t.Errorf("retoia.type = %q, want api", got)
 	}
-	if got := gjson.GetBytes(data, "caldensec.key").String(); got != "sk-newkey123" {
-		t.Errorf("caldensec.key = %q, want sk-newkey123", got)
+	if got := gjson.GetBytes(data, "retoia.key").String(); got != "sk-newkey123" {
+		t.Errorf("retoia.key = %q, want sk-newkey123", got)
 	}
 }
 
 func TestSetOpenCodeCredential_PreservesOthers(t *testing.T) {
 	authPath := filepath.Join(t.TempDir(), "auth.json")
 	seed := map[string]any{
-		"openai":    map[string]string{"type": "api", "key": "sk-openai"},
-		"caldensec": map[string]string{"type": "api", "key": "sk-old"},
+		"openai": map[string]string{"type": "api", "key": "sk-openai"},
+		"retoia": map[string]string{"type": "api", "key": "sk-old"},
 	}
 	b, _ := json.Marshal(seed)
 	if err := os.WriteFile(authPath, b, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := SetOpenCodeCredential(authPath, "caldensec", "sk-fresh"); err != nil {
+	if err := SetOpenCodeCredential(authPath, "retoia", "sk-fresh"); err != nil {
 		t.Fatalf("SetOpenCodeCredential: %v", err)
 	}
 
 	data, _ := os.ReadFile(authPath)
-	if got := gjson.GetBytes(data, "caldensec.key").String(); got != "sk-fresh" {
-		t.Errorf("caldensec.key = %q, want sk-fresh (overwritten)", got)
+	if got := gjson.GetBytes(data, "retoia.key").String(); got != "sk-fresh" {
+		t.Errorf("retoia.key = %q, want sk-fresh (overwritten)", got)
 	}
 	if got := gjson.GetBytes(data, "openai.key").String(); got != "sk-openai" {
 		t.Errorf("openai.key = %q, want sk-openai (preserved)", got)

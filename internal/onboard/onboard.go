@@ -1,6 +1,6 @@
 // Package onboard implements the mandatory server-key gate for the
-// `caldensec models` command. It runs a small Bubble Tea state machine that
-// asks for the CaldenSec gateway server key, validates it against the gateway,
+// `retoia models` command. It runs a small Bubble Tea state machine that
+// asks for the Reto IA gateway server key, validates it against the gateway,
 // and only then returns the set of authorized models to the caller.
 //
 // Security invariant: no model name is ever rendered, logged, or returned
@@ -20,11 +20,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/ficopix/caldensec/internal/config"
-	"github.com/ficopix/caldensec/internal/gateway"
-	"github.com/ficopix/caldensec/internal/keystore"
-	"github.com/ficopix/caldensec/internal/tui"
-	"github.com/ficopix/caldensec/internal/urlseal"
+	"github.com/retoia/retoia-cli/internal/config"
+	"github.com/retoia/retoia-cli/internal/gateway"
+	"github.com/retoia/retoia-cli/internal/keystore"
+	"github.com/retoia/retoia-cli/internal/tui"
+	"github.com/retoia/retoia-cli/internal/urlseal"
 )
 
 // Small local palette for the gate's own bordered "card", matching the
@@ -33,7 +33,7 @@ import (
 // other reason to depend on internal/tui.
 var (
 	gateBlack  = lipgloss.Color("0")
-	gateRed    = lipgloss.Color("9")  // the CaldenSec wordmark
+	gateRed    = lipgloss.Color("9")  // the Reto IA wordmark
 	gateAccent = lipgloss.Color("10") // green: border
 	gateWhite  = lipgloss.Color("15") // body text
 	gateMuted  = lipgloss.Color("245")
@@ -90,15 +90,15 @@ const gatewayAccount = "gateway"
 // unlockEnv holds the passphrase that opens the sealed gateway URL baked into
 // the build (see sealed.go). It is a shared secret the distributor hands to
 // whoever is allowed to install.
-const unlockEnv = "CALDENSEC_UNLOCK"
+const unlockEnv = "RETOIA_UNLOCK"
 
 // ErrNoGateway is returned by ResolveBase when no gateway URL is configured at
-// all: no --gateway flag, no $CALDENSEC_BASE, and no sealed URL baked in.
+// all: no --gateway flag, no $RETOIA_BASE, and no sealed URL baked in.
 // ErrLocked is returned when a sealed URL is baked in but no passphrase was
-// provided in $CALDENSEC_UNLOCK to open it.
+// provided in $RETOIA_UNLOCK to open it.
 var (
-	ErrNoGateway = errors.New("no gateway URL configured (pass --gateway or set $CALDENSEC_BASE)")
-	ErrLocked    = errors.New("gateway URL is sealed; set $CALDENSEC_UNLOCK with the install passphrase")
+	ErrNoGateway = errors.New("no gateway URL configured (pass --gateway or set $RETOIA_BASE)")
+	ErrLocked    = errors.New("gateway URL is sealed; set $RETOIA_UNLOCK with the install passphrase")
 )
 
 // ErrCancelled is returned by Run when the user cancels the server-key gate
@@ -110,7 +110,7 @@ var ErrCancelled = errors.New("onboarding cancelled")
 const rejectedMessage = "That key was rejected by the gateway. Check it and try again."
 
 // promptLine is the instruction shown above the masked input.
-const promptLine = "Enter your CaldenSec server key (sk-...) to continue."
+const promptLine = "Enter your Reto IA server key (sk-...) to continue."
 
 // unreachableMessage is shown when the gateway cannot be reached. It names the
 // base URL so the user can spot a wrong host, and never references any model.
@@ -119,8 +119,8 @@ func unreachableMessage(base string) string {
 }
 
 // ResolveBase returns the gateway base URL, applying precedence: the --gateway
-// flag wins, then $CALDENSEC_BASE, then the sealed URL baked into the build
-// (opened with the passphrase in $CALDENSEC_UNLOCK). It returns ErrNoGateway
+// flag wins, then $RETOIA_BASE, then the sealed URL baked into the build
+// (opened with the passphrase in $RETOIA_UNLOCK). It returns ErrNoGateway
 // when nothing is configured, ErrLocked when a sealed URL needs a passphrase
 // that was not provided, and wraps urlseal.ErrWrongPassphrase when the
 // passphrase is wrong.
@@ -135,8 +135,8 @@ func ResolveBase(flagVal, envVal string) (string, error) {
 }
 
 // Sealed reports whether a sealed gateway URL is baked into this build. When it
-// is, callers with no --gateway/$CALDENSEC_BASE must obtain a passphrase (from
-// $CALDENSEC_UNLOCK or an interactive prompt) and call UnsealBase.
+// is, callers with no --gateway/$RETOIA_BASE must obtain a passphrase (from
+// $RETOIA_UNLOCK or an interactive prompt) and call UnsealBase.
 func Sealed() bool { return sealedBase != "" }
 
 // UnsealBase opens the baked-in sealed gateway URL with passphrase. It returns
@@ -158,7 +158,7 @@ func UnsealBase(passphrase string) (string, error) {
 
 // UnsealUpdateBase opens the baked-in sealed update endpoint URL with passphrase.
 // An empty slot (or empty passphrase) returns "" with no error — the update base
-// is optional (it falls back to $CALDENSEC_UPDATE_BASE, then the gateway host).
+// is optional (it falls back to $RETOIA_UPDATE_BASE, then the gateway host).
 func UnsealUpdateBase(passphrase string) (string, error) {
 	if sealedUpdateBase == "" || passphrase == "" {
 		return "", nil
@@ -170,12 +170,12 @@ func UnsealUpdateBase(passphrase string) (string, error) {
 	return url, nil
 }
 
-// UnsealAgents opens the baked-in suggested agent→model templates (calden,
+// UnsealAgents opens the baked-in suggested agent→model templates (retoia,
 // cloud, and both — the combined full-access mix) with passphrase. Each is
 // (nil) when its slot is empty. It returns ErrLocked for an empty passphrase
 // when a slot is present, and wraps urlseal.ErrWrongPassphrase on a bad one.
-func UnsealAgents(passphrase string) (calden, cloud, both map[string]string, err error) {
-	if calden, err = unsealAgentSlot(sealedAgentsCalden, passphrase); err != nil {
+func UnsealAgents(passphrase string) (retoia, cloud, both map[string]string, err error) {
+	if retoia, err = unsealAgentSlot(sealedAgentsRetoia, passphrase); err != nil {
 		return nil, nil, nil, err
 	}
 	if cloud, err = unsealAgentSlot(sealedAgentsCloud, passphrase); err != nil {
@@ -184,7 +184,7 @@ func UnsealAgents(passphrase string) (calden, cloud, both map[string]string, err
 	if both, err = unsealAgentSlot(sealedAgentsBoth, passphrase); err != nil {
 		return nil, nil, nil, err
 	}
-	return calden, cloud, both, nil
+	return retoia, cloud, both, nil
 }
 
 func unsealAgentSlot(blob, passphrase string) (map[string]string, error) {
@@ -337,7 +337,7 @@ func (m gateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the gate's own bordered card: the same look as the models
-// picker (rounded border, "CaldenSec · " title), but with no breadcrumb and
+// picker (rounded border, "Reto IA · " title), but with no breadcrumb and
 // no model data whatsoever. It has no access to model data and therefore
 // cannot display any model name — see the security invariant in the
 // package doc comment.
@@ -346,7 +346,7 @@ func (m gateModel) View() string {
 		return ""
 	}
 
-	header := gateTitleAppStyle.Render("CaldenSec") + gateTitleSubStyle.Render(" · server key")
+	header := gateTitleAppStyle.Render("Reto IA") + gateTitleSubStyle.Render(" · server key")
 
 	var b strings.Builder
 	b.WriteString(header + "\n\n")

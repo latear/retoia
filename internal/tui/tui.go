@@ -1,5 +1,5 @@
-// Package tui implements the Bubble Tea picker used by calden-models: pick
-// a Calden agent (grouped into Primary / Subagents sections), then drill
+// Package tui implements the Bubble Tea picker used by retoia-models: pick
+// a Retoia agent (grouped into Primary / Subagents sections), then drill
 // down from a model category to a specific model.
 package tui
 
@@ -12,7 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/ficopix/caldensec/internal/config"
+	"github.com/retoia/retoia-cli/internal/config"
 )
 
 // step identifies which list is currently shown.

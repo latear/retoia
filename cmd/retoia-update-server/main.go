@@ -1,12 +1,12 @@
-// Command caldensec-update-server is the key-gated middleware that backs
-// `caldensec update`. It never hands out GitHub access: clients authenticate
+// Command retoia-update-server is the key-gated middleware that backs
+// `retoia update`. It never hands out GitHub access: clients authenticate
 // with their gateway key, and the server (holding a GitHub token) builds a
 // manifest from the newest release and streams the private assets.
 //
 // It serves two Bearer-authenticated endpoints:
 //
-//	GET /caldensec/manifest.json  -> {version, platforms{<os>_<arch>:{url,sha256,sig}}}
-//	GET /caldensec/dl/<asset>     -> the release asset bytes
+//	GET /retoia/manifest.json  -> {version, platforms{<os>_<arch>:{url,sha256,sig}}}
+//	GET /retoia/dl/<asset>     -> the release asset bytes
 //
 // Auth is validated against LiteLLM (LITELLM_URL) and/or a static allowlist
 // (UPDATE_KEYS); the server refuses to start with neither. It holds no signing
@@ -16,7 +16,7 @@
 // Dependency-free (standard library only). Configure via environment:
 //
 //	ADDR         listen address (default ":8099")
-//	GITHUB_REPO  owner/repo of the releases (default "ficopix/caldensec")
+//	GITHUB_REPO  owner/repo of the releases (default "TBD_OWNER/TBD_REPO")
 //	GITHUB_TOKEN token with read access to the private repo (required)
 //	PUBLIC_BASE  external base URL for asset links (default "https://"+Host)
 //	LITELLM_URL  validate keys via GET {LITELLM_URL}/v1/models (optional)
@@ -39,14 +39,14 @@ import (
 func main() {
 	srv, err := newServer()
 	if err != nil {
-		log.Fatalf("caldensec-update-server: %v", err)
+		log.Fatalf("retoia-update-server: %v", err)
 	}
 	mux := http.NewServeMux()
-	mux.HandleFunc("/caldensec/manifest.json", srv.handleManifest)
-	mux.HandleFunc("/caldensec/dl/", srv.handleDownload)
+	mux.HandleFunc("/retoia/manifest.json", srv.handleManifest)
+	mux.HandleFunc("/retoia/dl/", srv.handleDownload)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { io.WriteString(w, "ok") })
 
-	log.Printf("caldensec-update-server listening on %s (repo %s)", srv.addr, srv.repo)
+	log.Printf("retoia-update-server listening on %s (repo %s)", srv.addr, srv.repo)
 	log.Fatal(http.ListenAndServe(srv.addr, mux))
 }
 
@@ -67,7 +67,7 @@ type server struct {
 func newServer() (*server, error) {
 	s := &server{
 		addr:       envOr("ADDR", ":8099"),
-		repo:       envOr("GITHUB_REPO", "ficopix/caldensec"),
+		repo:       envOr("GITHUB_REPO", "TBD_OWNER/TBD_REPO"),
 		token:      os.Getenv("GITHUB_TOKEN"),
 		publicBase: strings.TrimRight(os.Getenv("PUBLIC_BASE"), "/"),
 		litellmURL: strings.TrimRight(os.Getenv("LITELLM_URL"), "/"),
@@ -247,7 +247,7 @@ func (s *server) handleManifest(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		p := platform{
-			URL:    base + "/caldensec/dl/" + a.Name,
+			URL:    base + "/retoia/dl/" + a.Name,
 			SHA256: digests[a.Name],
 		}
 		if sig, ok := rel.asset(a.Name + ".sig"); ok && sig != "" {
@@ -266,7 +266,7 @@ func (s *server) handleDownload(w http.ResponseWriter, r *http.Request) {
 	if !s.authorize(w, r) {
 		return
 	}
-	name := strings.TrimPrefix(r.URL.Path, "/caldensec/dl/")
+	name := strings.TrimPrefix(r.URL.Path, "/retoia/dl/")
 	if name == "" || strings.ContainsAny(name, "/\\") {
 		http.Error(w, "bad asset name", http.StatusBadRequest)
 		return
@@ -286,10 +286,10 @@ func (s *server) handleDownload(w http.ResponseWriter, r *http.Request) {
 }
 
 // platformKey maps a release asset filename such as
-// "caldensec_mac_arm64.tar.gz" to the manifest key "mac_arm64", or false when
+// "retoia_mac_arm64.tar.gz" to the manifest key "mac_arm64", or false when
 // the name is not a per-platform archive.
 func platformKey(assetName string) (string, bool) {
-	s := strings.TrimPrefix(assetName, "caldensec_")
+	s := strings.TrimPrefix(assetName, "retoia_")
 	if s == assetName {
 		return "", false
 	}

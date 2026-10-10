@@ -10,8 +10,8 @@ import (
 
 const sampleConfigRelPath = "../../testdata/opencode.sample.json"
 
-func TestManagedAgentsExcludesNonCaldensecAndIncludesCaldenAgents(t *testing.T) {
-	cfg, err := Load(sampleConfigRelPath, "caldensec")
+func TestManagedAgentsExcludesNonRetoiasecAndIncludesRetoiaAgents(t *testing.T) {
+	cfg, err := Load(sampleConfigRelPath, "retoia")
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -27,7 +27,7 @@ func TestManagedAgentsExcludesNonCaldensecAndIncludesCaldenAgents(t *testing.T) 
 		t.Fatalf("expected gentle-orchestrator to be excluded, got agents: %+v", agents)
 	}
 
-	wantNames := []string{"Calden-Orchestrator", "cs-recon", "cs-reviewer"}
+	wantNames := []string{"Retoia-Orchestrator", "cs-recon", "cs-reviewer"}
 	if len(agents) != len(wantNames) {
 		t.Fatalf("expected %d managed agents, got %d: %+v", len(wantNames), len(agents), agents)
 	}
@@ -49,7 +49,7 @@ func TestManagedAgentsExcludesNonCaldensecAndIncludesCaldenAgents(t *testing.T) 
 }
 
 func TestAvailableModelsListsAllProviderModels(t *testing.T) {
-	cfg, err := Load(sampleConfigRelPath, "caldensec")
+	cfg, err := Load(sampleConfigRelPath, "retoia")
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -88,7 +88,7 @@ func TestSetAgentModelChangesOnlyOneValueAndBacksUp(t *testing.T) {
 		t.Fatalf("writing temp copy: %v", err)
 	}
 
-	if err := SetAgentModel(copyPath, "caldensec", "cs-recon", "model-a"); err != nil {
+	if err := SetAgentModel(copyPath, "retoia", "cs-recon", "model-a"); err != nil {
 		t.Fatalf("SetAgentModel() error = %v", err)
 	}
 
@@ -103,11 +103,11 @@ func TestSetAgentModelChangesOnlyOneValueAndBacksUp(t *testing.T) {
 
 	// The only change must be cs-recon's model.
 	gotModel := gjson.GetBytes(updated, "agent.cs-recon.model").String()
-	if gotModel != "caldensec/model-a" {
-		t.Fatalf("expected agent.cs-recon.model = %q, got %q", "caldensec/model-a", gotModel)
+	if gotModel != "retoia/model-a" {
+		t.Fatalf("expected agent.cs-recon.model = %q, got %q", "retoia/model-a", gotModel)
 	}
 
-	cfg, err := Load(copyPath, "caldensec")
+	cfg, err := Load(copyPath, "retoia")
 	if err != nil {
 		t.Fatalf("Load() on updated config error = %v", err)
 	}
@@ -118,9 +118,9 @@ func TestSetAgentModelChangesOnlyOneValueAndBacksUp(t *testing.T) {
 			if a.CurrentModel != "model-a" {
 				t.Fatalf("cs-recon current model changed unexpectedly: %q", a.CurrentModel)
 			}
-		case "Calden-Orchestrator":
+		case "Retoia-Orchestrator":
 			if a.CurrentModel != "model-a" {
-				t.Fatalf("Calden-Orchestrator current model should be unchanged, got %q", a.CurrentModel)
+				t.Fatalf("Retoia-Orchestrator current model should be unchanged, got %q", a.CurrentModel)
 			}
 		case "cs-reviewer":
 			if a.CurrentModel != "model-c" {

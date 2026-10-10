@@ -10,19 +10,19 @@ import (
 
 func TestConfigureTUIPluginsFreshFile(t *testing.T) {
 	tui := filepath.Join(t.TempDir(), "tui.json") // does not exist
-	added, err := ConfigureTUIPlugins(tui, CaldenTUIPlugins)
+	added, err := ConfigureTUIPlugins(tui, RetoiaTUIPlugins)
 	if err != nil {
 		t.Fatalf("ConfigureTUIPlugins: %v", err)
 	}
-	if len(added) != len(CaldenTUIPlugins) {
-		t.Errorf("added %d, want %d", len(added), len(CaldenTUIPlugins))
+	if len(added) != len(RetoiaTUIPlugins) {
+		t.Errorf("added %d, want %d", len(added), len(RetoiaTUIPlugins))
 	}
 	data, _ := os.ReadFile(tui)
 	if !gjson.ValidBytes(data) {
 		t.Fatal("not valid JSON")
 	}
-	if got := gjson.GetBytes(data, "plugin.#").Int(); got != int64(len(CaldenTUIPlugins)) {
-		t.Errorf("plugin count = %d, want %d", got, len(CaldenTUIPlugins))
+	if got := gjson.GetBytes(data, "plugin.#").Int(); got != int64(len(RetoiaTUIPlugins)) {
+		t.Errorf("plugin count = %d, want %d", got, len(RetoiaTUIPlugins))
 	}
 	if gjson.GetBytes(data, "plugin.0").String() != "opencode-agents-monitor@0.1.2" {
 		t.Errorf("first plugin = %q", gjson.GetBytes(data, "plugin.0").String())
@@ -37,7 +37,7 @@ func TestConfigureTUIPluginsMergeNoClobber(t *testing.T) {
 	if err := os.WriteFile(tui, []byte(seed), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	added, err := ConfigureTUIPlugins(tui, CaldenTUIPlugins)
+	added, err := ConfigureTUIPlugins(tui, RetoiaTUIPlugins)
 	if err != nil {
 		t.Fatalf("ConfigureTUIPlugins: %v", err)
 	}
@@ -71,10 +71,10 @@ func TestConfigureTUIPluginsMergeNoClobber(t *testing.T) {
 
 func TestConfigureTUIPluginsIdempotent(t *testing.T) {
 	tui := filepath.Join(t.TempDir(), "tui.json")
-	if _, err := ConfigureTUIPlugins(tui, CaldenTUIPlugins); err != nil {
+	if _, err := ConfigureTUIPlugins(tui, RetoiaTUIPlugins); err != nil {
 		t.Fatal(err)
 	}
-	added, err := ConfigureTUIPlugins(tui, CaldenTUIPlugins)
+	added, err := ConfigureTUIPlugins(tui, RetoiaTUIPlugins)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestRemoveTUIPlugins(t *testing.T) {
 	seed := `{"$schema":"x","plugin":["opencode-subagent-statusline","opencode-agents-monitor@0.1.1","opencode-todo"]}`
 	os.WriteFile(tui, []byte(seed), 0o644)
 
-	n, err := RemoveTUIPlugins(tui, CaldenTUIPlugins)
+	n, err := RemoveTUIPlugins(tui, RetoiaTUIPlugins)
 	if err != nil {
 		t.Fatalf("RemoveTUIPlugins: %v", err)
 	}
@@ -103,17 +103,17 @@ func TestRemoveTUIPlugins(t *testing.T) {
 		t.Errorf("kept = %v, want only the user's own plugin", got)
 	}
 	// Idempotent: a second run removes nothing.
-	if n2, _ := RemoveTUIPlugins(tui, CaldenTUIPlugins); n2 != 0 {
+	if n2, _ := RemoveTUIPlugins(tui, RetoiaTUIPlugins); n2 != 0 {
 		t.Errorf("second run removed %d, want 0", n2)
 	}
 }
 
-// TestCaldenTheme covers shipping, selecting, and removing the red theme.
-func TestCaldenTheme(t *testing.T) {
+// TestRetoiaTheme covers shipping, selecting, and removing the red theme.
+func TestRetoiaTheme(t *testing.T) {
 	dir := t.TempDir()
-	path, err := WriteCaldenTheme(dir)
+	path, err := WriteRetoiaTheme(dir)
 	if err != nil {
-		t.Fatalf("WriteCaldenTheme: %v", err)
+		t.Fatalf("WriteRetoiaTheme: %v", err)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -127,16 +127,16 @@ func TestCaldenTheme(t *testing.T) {
 	}
 
 	tuiPath := filepath.Join(dir, "tui.json")
-	if err := SetTUITheme(tuiPath, CaldenThemeName); err != nil {
+	if err := SetTUITheme(tuiPath, RetoiaThemeName); err != nil {
 		t.Fatalf("SetTUITheme: %v", err)
 	}
 	td, _ := os.ReadFile(tuiPath)
-	if got := gjson.GetBytes(td, "theme").String(); got != CaldenThemeName {
-		t.Errorf("tui.json theme = %q, want %q", got, CaldenThemeName)
+	if got := gjson.GetBytes(td, "theme").String(); got != RetoiaThemeName {
+		t.Errorf("tui.json theme = %q, want %q", got, RetoiaThemeName)
 	}
 
-	if err := RemoveCaldenTheme(dir); err != nil {
-		t.Fatalf("RemoveCaldenTheme: %v", err)
+	if err := RemoveRetoiaTheme(dir); err != nil {
+		t.Fatalf("RemoveRetoiaTheme: %v", err)
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Error("theme file should be removed")

@@ -5,7 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/ficopix/caldensec/internal/config"
+	"github.com/retoia/retoia-cli/internal/config"
 )
 
 // TestRenderNoPanicAcrossSizes renders the banner/scroll-affected screens at many
@@ -13,7 +13,7 @@ import (
 // size-dependent panic in View/Update.
 func TestRenderNoPanicAcrossSizes(t *testing.T) {
 	groups := config.GroupModelsByCategory([]config.Model{
-		{ID: "m0", Name: "m0", CategoryLabel: "calden"},
+		{ID: "m0", Name: "m0", CategoryLabel: "retoia"},
 		{ID: "m1", Name: "m1", CategoryLabel: "cloud"},
 	})
 	sizes := [][2]int{{0, 0}, {1, 1}, {20, 5}, {40, 8}, {72, 20}, {73, 20}, {80, 3}, {80, 24}, {200, 60}}

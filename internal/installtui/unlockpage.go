@@ -8,11 +8,11 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/ficopix/caldensec/internal/urlseal"
+	"github.com/retoia/retoia-cli/internal/urlseal"
 )
 
 // unlockPrompt is the instruction shown on the step-0 page.
-const unlockPrompt = "Enter the CaldenSec install passphrase to unlock the gateway.\nLeave it empty and press ↵ to continue without a gateway."
+const unlockPrompt = "Enter the Reto IA install passphrase to unlock the gateway.\nLeave it empty and press ↵ to continue without a gateway."
 
 // unlockState is the phase of the step-0 unlock page.
 type unlockState int

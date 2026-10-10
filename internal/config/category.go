@@ -8,7 +8,7 @@ import (
 // Category names, in their fixed display order.
 const (
 	CategoryAutomatic = "Automatic"
-	CategoryCalden    = "Calden"
+	CategoryRetoia    = "Retoia"
 	CategoryByEffort  = "By effort"
 	CategoryCloud     = "Cloud"
 )
@@ -32,7 +32,7 @@ var effortRank = map[string]int{
 //   - "auto" is Automatic.
 //   - an "esfuerzo-" prefix is By effort.
 //   - a "cloud-" prefix is Cloud.
-//   - anything else is Calden.
+//   - anything else is Retoia.
 func (m Model) Category() string {
 	if m.CategoryLabel != "" {
 		return m.CategoryLabel
@@ -45,13 +45,13 @@ func (m Model) Category() string {
 	case strings.HasPrefix(m.ID, cloudPrefix):
 		return CategoryCloud
 	default:
-		return CategoryCalden
+		return CategoryRetoia
 	}
 }
 
 // CategoryOrder returns the fixed display order of categories.
 func CategoryOrder() []string {
-	return []string{CategoryAutomatic, CategoryCalden, CategoryByEffort, CategoryCloud}
+	return []string{CategoryAutomatic, CategoryRetoia, CategoryByEffort, CategoryCloud}
 }
 
 // effortLevelRank maps a model id's "esfuerzo-<level>" suffix to its sort

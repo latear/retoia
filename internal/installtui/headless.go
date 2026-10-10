@@ -5,10 +5,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/ficopix/caldensec/internal/config"
-	"github.com/ficopix/caldensec/internal/gateway"
-	"github.com/ficopix/caldensec/internal/keystore"
-	"github.com/ficopix/caldensec/internal/onboard"
+	"github.com/retoia/retoia-cli/internal/config"
+	"github.com/retoia/retoia-cli/internal/gateway"
+	"github.com/retoia/retoia-cli/internal/keystore"
+	"github.com/retoia/retoia-cli/internal/onboard"
 )
 
 // HeadlessOptions configures a non-interactive install.
@@ -23,10 +23,10 @@ type HeadlessOptions struct {
 // from the environment / key store and validates it against the gateway (best
 // effort) to get the authorized models, then applies the provider, credential,
 // PATH and (optionally) Engram/Context7/TUI plugins, writing a short summary to
-// out. It is the entry point used by `caldensec install --yes` and by the
+// out. It is the entry point used by `retoia install --yes` and by the
 // sandbox image, where no TTY is available.
 func RunHeadless(out io.Writer, configPath, providerID, base, passphrase string, opts HeadlessOptions) error {
-	serverKey := onboard.ResolveServerKey(os.Getenv("CALDENSEC_API_KEY"), keystore.Get)
+	serverKey := onboard.ResolveServerKey(os.Getenv("RETOIA_API_KEY"), keystore.Get)
 	var models []config.Model
 	if serverKey != "" && base != "" {
 		if m, err := gateway.ValidateKey(base, serverKey); err == nil {
@@ -49,7 +49,7 @@ func RunHeadless(out io.Writer, configPath, providerID, base, passphrase string,
 		return err
 	}
 
-	fmt.Fprintf(out, "caldensec: headless install done → %s\n", res.configPath)
+	fmt.Fprintf(out, "retoia: headless install done → %s\n", res.configPath)
 	if res.baseURLSet && res.baseURL != "" {
 		fmt.Fprintf(out, "  gateway: %s\n", res.baseURL)
 	}

@@ -1,5 +1,5 @@
 // Package config loads and surgically edits the OpenCode configuration file
-// (opencode.json) used by the Calden agent suite. It never re-marshals the
+// (opencode.json) used by the Retoia agent suite. It never re-marshals the
 // whole document: reads use gjson, writes use sjson to patch a single value.
 package config
 
@@ -13,7 +13,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// Agent describes one Calden-managed agent as found under `agent.<name>`.
+// Agent describes one Retoia-managed agent as found under `agent.<name>`.
 type Agent struct {
 	Name         string // agent key, e.g. "cs-recon"
 	Mode         string // "primary" or "subagent"
@@ -26,7 +26,7 @@ type Model struct {
 	ID   string // model key, e.g. "model-a"
 	Name string // display name, e.g. "Model A"
 
-	// Provider is the OpenCode provider this model belongs to (e.g. "caldensec"
+	// Provider is the OpenCode provider this model belongs to (e.g. "retoia"
 	// or a custom "zai"); assignment writes "<Provider>/<ID>". CategoryLabel, when
 	// set, overrides the id-prefix category so custom providers group under their
 	// own name. Both are empty for a plain gateway model (Provider defaults to the
@@ -67,12 +67,12 @@ func Load(path, providerID string) (*Config, error) {
 	return &Config{Path: path, ProviderID: providerID, raw: data}, nil
 }
 
-// isCaldenAgentName reports whether an agent name belongs to the Calden suite by
-// its name prefix — "Calden" for the primaries (and legacy installs) and "cs-"
+// isRetoiaAgentName reports whether an agent name belongs to the Retoia suite by
+// its name prefix — "Retoia" for the primaries (and legacy installs) and "cs-"
 // for the subagents — so those agents stay managed even when pointed at a
 // non-primary provider.
-func isCaldenAgentName(name string) bool {
-	return strings.HasPrefix(name, "Calden") || strings.HasPrefix(name, "cs-")
+func isRetoiaAgentName(name string) bool {
+	return strings.HasPrefix(name, "Retoia") || strings.HasPrefix(name, "cs-")
 }
 
 // ManagedAgents returns every agent under `.agent` whose `.model` string
@@ -89,10 +89,10 @@ func (c *Config) ManagedAgents() []Agent {
 		}
 		model := modelResult.String()
 		name := key.String()
-		// Managed = bound to the primary provider, OR a Calden-suite agent
+		// Managed = bound to the primary provider, OR a Retoia-suite agent
 		// (name prefix) regardless of provider, so an agent stays managed after
 		// being pointed at a custom provider like "zai/...".
-		if !strings.HasPrefix(model, prefix) && !isCaldenAgentName(name) {
+		if !strings.HasPrefix(model, prefix) && !isRetoiaAgentName(name) {
 			return true
 		}
 		// CurrentModel drops the provider prefix (everything up to the first "/").
@@ -141,7 +141,7 @@ func (c *Config) ProviderBaseURL() string {
 }
 
 // AgentNames returns every agent key under `.agent`, in file order. Used by
-// uninstall to find all Calden-suite agents (including legacy names) to remove.
+// uninstall to find all Retoia-suite agents (including legacy names) to remove.
 func (c *Config) AgentNames() []string {
 	var names []string
 	gjson.GetBytes(c.raw, "agent").ForEach(func(key, _ gjson.Result) bool {
@@ -183,7 +183,7 @@ func (c *Config) ProviderIDs() []string {
 }
 
 // BackupSuffix is appended to the config path to name the pre-write backup.
-const BackupSuffix = ".bak-calden-models"
+const BackupSuffix = ".bak-retoia-models"
 
 // SetAgentModel backs up the config file at path, then surgically sets
 // `agent.<agentName>.model` to "<providerID>/<modelID>" using sjson, and

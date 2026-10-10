@@ -41,7 +41,7 @@ func TestGroupModelsByCategoryAppendsCustom(t *testing.T) {
 	}
 }
 
-func TestManagedAgentsKeepsCaldenAgentOnCustomProvider(t *testing.T) {
+func TestManagedAgentsKeepsRetoiaAgentOnCustomProvider(t *testing.T) {
 	cfg := filepath.Join(t.TempDir(), "opencode.json")
 	seed := `{
 	  "agent": {
@@ -49,21 +49,21 @@ func TestManagedAgentsKeepsCaldenAgentOnCustomProvider(t *testing.T) {
 	    "some-other":   {"mode": "primary",  "model": "openai/gpt-4o"}
 	  },
 	  "provider": {
-	    "caldensec": {"options": {"baseURL": "x"}, "models": {"model-a": {"name": "o"}}},
+	    "retoia": {"options": {"baseURL": "x"}, "models": {"model-a": {"name": "o"}}},
 	    "zai":       {"options": {"baseURL": "y"}, "models": {"glm-4.6": {"name": "GLM"}}}
 	  }
 	}`
 	if err := os.WriteFile(cfg, []byte(seed), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	c, err := Load(cfg, "caldensec")
+	c, err := Load(cfg, "retoia")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	agents := c.ManagedAgents()
 	if len(agents) != 1 {
-		t.Fatalf("expected 1 managed agent (the Calden one), got %d: %+v", len(agents), agents)
+		t.Fatalf("expected 1 managed agent (the Retoia one), got %d: %+v", len(agents), agents)
 	}
 	if agents[0].Name != "cs-coder" || agents[0].CurrentModel != "glm-4.6" {
 		t.Errorf("got %+v, want cs-coder with current model glm-4.6 (prefix stripped)", agents[0])
@@ -71,8 +71,8 @@ func TestManagedAgentsKeepsCaldenAgentOnCustomProvider(t *testing.T) {
 
 	// Provider enumeration and per-provider models.
 	ids := c.ProviderIDs()
-	if len(ids) != 2 || ids[0] != "caldensec" || ids[1] != "zai" {
-		t.Errorf("ProviderIDs = %v, want [caldensec zai]", ids)
+	if len(ids) != 2 || ids[0] != "retoia" || ids[1] != "zai" {
+		t.Errorf("ProviderIDs = %v, want [retoia zai]", ids)
 	}
 	zai := c.ProviderModels("zai")
 	if len(zai) != 1 || zai[0].ID != "glm-4.6" || zai[0].Provider != "zai" {

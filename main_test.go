@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ficopix/caldensec/internal/config"
+	"github.com/retoia/retoia-cli/internal/config"
 	"github.com/tidwall/gjson"
 )
 
@@ -19,7 +19,7 @@ import (
 // smoke test without opening the TUI.
 func TestPrintListing(t *testing.T) {
 	agents := []config.Agent{
-		{Name: "Calden-Orchestrator", Mode: "primary", CurrentModel: "model-a"},
+		{Name: "Retoia-Orchestrator", Mode: "primary", CurrentModel: "model-a"},
 		{Name: "cs-coder", Mode: "subagent", CurrentModel: "model-a"},
 	}
 	models := []config.Model{
@@ -34,9 +34,9 @@ func TestPrintListing(t *testing.T) {
 
 	for _, want := range []string{
 		"Primary", "Subagents",
-		"Calden-Orchestrator", "model-a",
+		"Retoia-Orchestrator", "model-a",
 		"cs-coder",
-		"Automatic", "Calden", "By effort", "Cloud",
+		"Automatic", "Retoia", "By effort", "Cloud",
 		"auto", "esfuerzo-bajo", "esfuerzo-alto", "cloud-kk",
 	} {
 		if !strings.Contains(out, want) {
@@ -51,7 +51,7 @@ func TestPrintListing(t *testing.T) {
 }
 
 // TestRun_UnknownCommand verifies an unrecognized subcommand errors out with
-// a pointer to `caldensec help`, instead of silently doing nothing.
+// a pointer to `retoia help`, instead of silently doing nothing.
 func TestRun_UnknownCommand(t *testing.T) {
 	err := run([]string{"bogus"})
 	if err == nil {
@@ -82,7 +82,7 @@ func TestRunCLI_HelpToStdout(t *testing.T) {
 	if err := runCLI(&out, []string{"help"}); err != nil {
 		t.Fatalf("runCLI(help) = %v, want nil", err)
 	}
-	if !strings.Contains(out.String(), "Usage: caldensec") {
+	if !strings.Contains(out.String(), "Usage: retoia") {
 		t.Errorf("help usage not written to stdout writer; got %q", out.String())
 	}
 
@@ -122,7 +122,7 @@ func captureStdout(t *testing.T, fn func()) string {
 // for the gate: `models --list` with a key the gateway rejects must return an
 // error and must NOT print any model name — even though the gateway is capable
 // of serving models. It runs against an httptest gateway that answers 401 for
-// every request, and sets CALDENSEC_API_KEY so the key resolves non-empty and
+// every request, and sets RETOIA_API_KEY so the key resolves non-empty and
 // the code path reaches validation (not the "no key" short-circuit).
 func TestRun_ModelsList_RejectedKeyLeaksNoModels(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +132,7 @@ func TestRun_ModelsList_RejectedKeyLeaksNoModels(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	t.Setenv("CALDENSEC_API_KEY", "sk-bogus-rejected")
+	t.Setenv("RETOIA_API_KEY", "sk-bogus-rejected")
 
 	var runErr error
 	out := captureStdout(t, func() {
@@ -153,7 +153,7 @@ func TestRun_ModelsList_RejectedKeyLeaksNoModels(t *testing.T) {
 	}
 }
 
-// TestKeyStatus verifies the `caldensec key` status text: env shadows the
+// TestKeyStatus verifies the `retoia key` status text: env shadows the
 // stored key, otherwise the stored key, otherwise none.
 func TestKeyStatus(t *testing.T) {
 	if s := keyStatus("sk-envvalue1234", "sk-stored1234"); !strings.Contains(s, "env") {
@@ -172,19 +172,19 @@ func TestKeyStatus(t *testing.T) {
 }
 
 // TestCmdSeal covers the distributor-only seal command: it needs the passphrase
-// in $CALDENSEC_UNLOCK and exactly one URL argument, and prints a paste-ready
+// in $RETOIA_UNLOCK and exactly one URL argument, and prints a paste-ready
 // constant that does not contain the plaintext URL.
 func TestCmdSeal(t *testing.T) {
 	const url = "https://gateway.example/v1"
 
 	// Missing passphrase is a clear error, no output.
-	t.Setenv("CALDENSEC_UNLOCK", "")
+	t.Setenv("RETOIA_UNLOCK", "")
 	if err := cmdSeal(io.Discard, []string{url}); err == nil {
-		t.Error("cmdSeal without $CALDENSEC_UNLOCK should error")
+		t.Error("cmdSeal without $RETOIA_UNLOCK should error")
 	}
 
 	// Missing / extra argument is rejected.
-	t.Setenv("CALDENSEC_UNLOCK", "pw")
+	t.Setenv("RETOIA_UNLOCK", "pw")
 	if err := cmdSeal(io.Discard, nil); err == nil {
 		t.Error("cmdSeal with no URL should error")
 	}
@@ -203,7 +203,7 @@ func TestCmdSeal(t *testing.T) {
 	}
 }
 
-// TestCmdMCP exercises the `caldensec mcp` subcommand end to end against a temp
+// TestCmdMCP exercises the `retoia mcp` subcommand end to end against a temp
 // config: adding a catalog server, a custom local server (with its own flags
 // after `--`), a remote server, listing, and removing. It also checks the
 // hand-rolled parser accepts a flag after the positional (mcp add id --config X).
@@ -328,7 +328,7 @@ func TestCmdSandbox(t *testing.T) {
 // work directory is preserved.
 func TestPurgeSandboxArtifacts(t *testing.T) {
 	dir := t.TempDir()
-	for _, n := range []string{"Dockerfile.sandbox", "compose.sandbox.yaml", "caldensec-entrypoint.sh", "SANDBOX.md", ".dockerignore"} {
+	for _, n := range []string{"Dockerfile.sandbox", "compose.sandbox.yaml", "retoia-entrypoint.sh", "SANDBOX.md", ".dockerignore"} {
 		if err := os.WriteFile(filepath.Join(dir, n), []byte("x"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -348,7 +348,7 @@ func TestPurgeSandboxArtifacts(t *testing.T) {
 	if len(removed) != 6 {
 		t.Errorf("removed %d artifacts, want 6: %v", len(removed), removed)
 	}
-	for _, n := range []string{"Dockerfile.sandbox", "compose.sandbox.yaml", "caldensec-entrypoint.sh", "SANDBOX.md", ".dockerignore", "opencode-config"} {
+	for _, n := range []string{"Dockerfile.sandbox", "compose.sandbox.yaml", "retoia-entrypoint.sh", "SANDBOX.md", ".dockerignore", "opencode-config"} {
 		if _, err := os.Stat(filepath.Join(dir, n)); !os.IsNotExist(err) {
 			t.Errorf("%s should have been removed", n)
 		}

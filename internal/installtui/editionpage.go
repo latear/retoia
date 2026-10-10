@@ -22,7 +22,7 @@ type editionOption struct {
 
 var editionOptions = []editionOption{
 	{"Local", "Install into this host's OpenCode (~/.config/opencode). Fastest, but touches your existing OpenCode."},
-	{"Sandbox (Docker)", "Scaffold one isolated container with OpenCode + the Calden suite + Kali tools inside. Your host OpenCode is never touched."},
+	{"Sandbox (Docker)", "Scaffold one isolated container with OpenCode + the Retoia suite + Kali tools inside. Your host OpenCode is never touched."},
 }
 
 // editionModel is the Bubble Tea model for the step-0 edition selector.
@@ -73,7 +73,7 @@ func (m editionModel) View() string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("Where do you want to install CaldenSec?\n\n")
+	b.WriteString("Where do you want to install Reto IA?\n\n")
 	for i, opt := range editionOptions {
 		marker := mutedStyle.Render("  ")
 		label := opt.label

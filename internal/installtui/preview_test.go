@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/ficopix/caldensec/internal/config"
+	"github.com/retoia/retoia-cli/internal/config"
 )
 
 // TestPreview renders each wizard page's View() with sample data to stdout so a
@@ -89,7 +89,7 @@ func TestPreview(t *testing.T) {
 			{ID: "cloud-c", Name: "cloud-c"},
 		}
 		groups := config.GroupModelsByCategory(models)
-		pm := newAgentPicker("Calden", "model-a", groups)
+		pm := newAgentPicker("Retoia", "model-a", groups)
 		updated, _ := pm.Update(tea.WindowSizeMsg{Width: w, Height: 20})
 		pm = updated.(agentPickerModel)
 		frame("PER-AGENT PICKER · category step", pm.View())

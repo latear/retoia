@@ -1,11 +1,11 @@
-// cs-updates.fico.ar — Cloudflare Worker backing `caldensec update`.
+// cs-updates.fico.ar — Cloudflare Worker backing `retoia update`.
 //
 // Key-gated, serverless (no server to run). It holds a GitHub token as a secret
 // and is the ONLY thing that talks to GitHub: clients fetch updates with their
-// gateway key and never touch GitHub. Same contract as cmd/caldensec-update-server:
+// gateway key and never touch GitHub. Same contract as cmd/retoia-update-server:
 //
-//   GET /caldensec/manifest.json  -> {version, platforms{<os>_<arch>:{url,sha256,sig}}}
-//   GET /caldensec/dl/<asset>     -> the release asset bytes
+//   GET /retoia/manifest.json  -> {version, platforms{<os>_<arch>:{url,sha256,sig}}}
+//   GET /retoia/dl/<asset>     -> the release asset bytes
 //
 // Auth: a request's `Authorization: Bearer <key>` is accepted when it is in the
 // UPDATE_KEYS allowlist OR (if LITELLM_URL is set) when LiteLLM accepts it — so
@@ -15,7 +15,7 @@
 //   GITHUB_TOKEN (secret, required)  read access to the private repo
 //   UPDATE_KEYS  (secret, optional)  comma-separated allowlist of accepted keys
 //   LITELLM_URL  (var, optional)     validate keys via GET {LITELLM_URL}/v1/models
-//   GITHUB_REPO  (var)               owner/repo (default ficopix/caldensec)
+//   GITHUB_REPO  (var)               owner/repo (default TBD_OWNER/TBD_REPO)
 //   PUBLIC_BASE  (var)               external base for asset links (default: request origin)
 //   HOME_URL     (var)               where unauthenticated/root visitors are sent
 
@@ -27,7 +27,7 @@ export default {
 		if (path === "/healthz") return new Response("ok\n");
 
 		const isAPI =
-			path === "/caldensec/manifest.json" || path.startsWith("/caldensec/dl/");
+			path === "/retoia/manifest.json" || path.startsWith("/retoia/dl/");
 		if (!isAPI) {
 			// Casual visitor (or root) → send them home.
 			return Response.redirect(env.HOME_URL || "https://fico.ar", 302);
@@ -45,8 +45,8 @@ export default {
 		}
 
 		try {
-			if (path === "/caldensec/manifest.json") return await manifest(request, env);
-			return await download(path.slice("/caldensec/dl/".length), env);
+			if (path === "/retoia/manifest.json") return await manifest(request, env);
+			return await download(path.slice("/retoia/dl/".length), env);
 		} catch (e) {
 			return new Response("upstream error: " + e.message + "\n", { status: 502 });
 		}
@@ -85,12 +85,12 @@ function ghHeaders(env) {
 	return {
 		Authorization: "token " + env.GITHUB_TOKEN,
 		Accept: "application/vnd.github+json",
-		"User-Agent": "caldensec-updates",
+		"User-Agent": "retoia-updates",
 	};
 }
 
 async function latestRelease(env) {
-	const repo = env.GITHUB_REPO || "ficopix/caldensec";
+	const repo = env.GITHUB_REPO || "TBD_OWNER/TBD_REPO";
 	const r = await fetch(`${GH}/repos/${repo}/releases/latest`, {
 		headers: ghHeaders(env),
 	});
@@ -98,9 +98,9 @@ async function latestRelease(env) {
 	return r.json();
 }
 
-// platformKey maps "caldensec_mac_arm64.tar.gz" -> "mac_arm64", else null.
+// platformKey maps "retoia_mac_arm64.tar.gz" -> "mac_arm64", else null.
 function platformKey(name) {
-	const m = name.match(/^caldensec_(.+)\.tar\.gz$/);
+	const m = name.match(/^retoia_(.+)\.tar\.gz$/);
 	if (!m || !m[1].includes("_")) return null;
 	return m[1];
 }
@@ -123,7 +123,7 @@ async function manifest(request, env) {
 	for (const a of rel.assets || []) {
 		const pk = platformKey(a.name);
 		if (!pk) continue;
-		const p = { url: `${base}/caldensec/dl/${a.name}`, sha256: digest[a.name] || "" };
+		const p = { url: `${base}/retoia/dl/${a.name}`, sha256: digest[a.name] || "" };
 		if (byName[a.name + ".sig"]) {
 			p.sig = (await assetText(byName[a.name + ".sig"].url, env)).trim();
 		}

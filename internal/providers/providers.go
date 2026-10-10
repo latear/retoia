@@ -1,5 +1,5 @@
 // Package providers is a small registry of well-known, OpenAI-compatible model
-// providers that `caldensec models` can add as custom OpenCode providers. Each
+// providers that `retoia models` can add as custom OpenCode providers. Each
 // exposes an OpenAI-style `GET {BaseURL}/models` endpoint behind a Bearer key,
 // so the same fetch (internal/gateway.FetchModels) works for all of them.
 //

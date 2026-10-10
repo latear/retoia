@@ -3,12 +3,12 @@ package installtui
 import "github.com/charmbracelet/lipgloss"
 
 // Console palette for the install wizard: black background, red wordmark, white
-// body text, red accents/selection/borders (matching the CaldenSec logo), with
+// body text, red accents/selection/borders (matching the Reto IA logo), with
 // green reserved for success checks. Colors are fixed (not adaptive) because the
 // wizard forces a black field.
 var (
 	colBlack = lipgloss.Color("0")
-	colRed   = lipgloss.Color("9")  // bright red — the CaldenSec wordmark + accents
+	colRed   = lipgloss.Color("9")  // bright red — the Reto IA wordmark + accents
 	colGreen = lipgloss.Color("10") // bright green — success checks only
 	colWhite = lipgloss.Color("15") // body text
 	colGray  = lipgloss.Color("245")
@@ -65,10 +65,10 @@ func cardContentWidth(termWidth int) int {
 	return w
 }
 
-// renderCard renders the dialog box: a red "CaldenSec" wordmark, a white
+// renderCard renders the dialog box: a red "Reto IA" wordmark, a white
 // subtitle, the breadcrumb, a blank spacer, then body.
 func renderCard(termWidth int, subtitle, breadcrumb, body string) string {
-	header := redStyle.Bold(true).Render("CaldenSec") + whiteStyle.Render(" · "+subtitle)
+	header := redStyle.Bold(true).Render("Reto IA") + whiteStyle.Render(" · "+subtitle)
 	content := header + "\n" + breadcrumb + "\n\n" + body
 	// Add back the horizontal padding lipgloss folds into Width, so the text
 	// area equals cardContentWidth and full-width rows never wrap.
@@ -94,7 +94,7 @@ func signature() string {
 // size of the terminal — the classic centered-dialog-on-black look.
 func screen(width, height int, card, footer string) string {
 	parts := make([]string, 0, 4)
-	// The CaldenSec wordmark is shown on every screen (it self-hides only when the
+	// The Reto IA wordmark is shown on every screen (it self-hides only when the
 	// terminal is too narrow to fit it).
 	if b := banner(width); b != "" {
 		parts = append(parts, b, "")

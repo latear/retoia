@@ -11,7 +11,7 @@ import (
 )
 
 // baseURLBackupSuffix names the backup taken before setting the provider base URL.
-const baseURLBackupSuffix = ".bak-calden-baseurl"
+const baseURLBackupSuffix = ".bak-retoia-baseurl"
 
 // SetProviderBaseURL surgically sets provider.<providerID>.options.baseURL in the
 // opencode.json at configPath, so OpenCode talks to the right gateway. It backs

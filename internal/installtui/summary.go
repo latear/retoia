@@ -81,7 +81,7 @@ func (m summaryModel) View() string {
 	switch {
 	case r.keyStoreErr != nil:
 		b.WriteString(bullet(false, "Server key", warnStyle.Render(fmt.Sprintf("validated but NOT saved (%s)", r.keyStoreErr))))
-		b.WriteString("\n      " + mutedStyle.Render("it won't persist — export CALDENSEC_API_KEY=<key> before re-running"))
+		b.WriteString("\n      " + mutedStyle.Render("it won't persist — export RETOIA_API_KEY=<key> before re-running"))
 	case r.keyStored:
 		b.WriteString(bullet(true, "Server key", fmt.Sprintf("stored (%d models authorized)", r.storedCount)))
 	case r.keepCurrent && r.offline:
@@ -119,15 +119,15 @@ func (m summaryModel) View() string {
 		b.WriteString("\n")
 	}
 
-	// CaldenSec OpenCode theme.
+	// Reto IA OpenCode theme.
 	if r.themeInstalled {
-		b.WriteString(bullet(true, "Theme", mutedStyle.Render("calden (red) selected in tui.json")))
+		b.WriteString(bullet(true, "Theme", mutedStyle.Render("retoia (red) selected in tui.json")))
 		b.WriteString("\n")
 	}
 
-	// CaldenSec startup logo (home_logo TUI plugin).
+	// Reto IA startup logo (home_logo TUI plugin).
 	if r.logoInstalled {
-		b.WriteString(bullet(true, "Logo", mutedStyle.Render("CaldenSec wordmark on the OpenCode home screen")))
+		b.WriteString(bullet(true, "Logo", mutedStyle.Render("Reto IA wordmark on the OpenCode home screen")))
 		b.WriteString("\n")
 	}
 
@@ -156,11 +156,11 @@ func (m summaryModel) View() string {
 	if r.noGateway {
 		// No gateway yet: spell out exactly what is still pending.
 		b.WriteString("  " + warnStyle.Render("No gateway configured. Still pending:") + "\n")
-		b.WriteString(nextStep("set the gateway", "re-run install with the passphrase, or set CALDENSEC_BASE + a key"))
-		b.WriteString(nextStep("assign models", "caldensec models"))
+		b.WriteString(nextStep("set the gateway", "re-run install with the passphrase, or set RETOIA_BASE + a key"))
+		b.WriteString(nextStep("assign models", "retoia models"))
 	}
-	b.WriteString(nextStep("caldensec models", "assign a model to each configured agent"))
-	b.WriteString(nextStep("caldensec key", "check or reset the stored gateway key"))
+	b.WriteString(nextStep("retoia models", "assign a model to each configured agent"))
+	b.WriteString(nextStep("retoia key", "check or reset the stored gateway key"))
 	b.WriteString(nextStep("restart OpenCode", "load the provider and MCP servers"))
 
 	breadcrumb := okStyle.Render("Done — everything below was applied")

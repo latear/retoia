@@ -1,10 +1,10 @@
-# cs-updates.fico.ar — Cloudflare Pages Function for `caldensec update`
+# cs-updates.fico.ar — Cloudflare Pages Function for `retoia update`
 
 A serverless, key-gated update endpoint — no server to run. It holds the GitHub
 token as a secret and is the only thing that talks to GitHub; clients fetch
 updates with their **gateway key** and never touch GitHub. Same contract as
-[`../../cmd/caldensec-update-server`](../../cmd/caldensec-update-server/), so the
-existing `caldensec update` client works against it unchanged.
+[`../../cmd/retoia-update-server`](../../cmd/retoia-update-server/), so the
+existing `retoia update` client works against it unchanged.
 
 Shipped as a single `_worker.js` (Pages "advanced mode"), so a **Pages-scoped**
 Cloudflare token deploys it. (It is also a valid standalone Worker — see the end.)
@@ -36,8 +36,8 @@ root and other paths → `302` to `HOME_URL`.
 
 ## Endpoints
 
-- `GET /caldensec/manifest.json` — `{version, platforms{<os>_<arch>:{url,sha256,sig}}}`
-- `GET /caldensec/dl/<asset>` — the release asset bytes
+- `GET /retoia/manifest.json` — `{version, platforms{<os>_<arch>:{url,sha256,sig}}}`
+- `GET /retoia/dl/<asset>` — the release asset bytes
 - `GET /healthz` — unauthenticated liveness
 
 ## Token scopes

@@ -1,10 +1,10 @@
 // Package keystore provides secure storage for the gateway server key and
-// BYOK (bring-your-own-key) provider keys used by caldensec.
+// BYOK (bring-your-own-key) provider keys used by retoia.
 //
 // By default secrets live in a 0600-permission JSON file under the user's
-// config directory (~/.config/caldensec/secrets.json) — the same approach the
+// config directory (~/.config/retoia/secrets.json) — the same approach the
 // aws and gh CLIs take. The OS keyring is OFF by default and opt-in via
-// CALDENSEC_KEYCHAIN=1, because on macOS a broken or locked login keychain
+// RETOIA_KEYCHAIN=1, because on macOS a broken or locked login keychain
 // makes the Security framework pop a blocking native dialog ("no keychain
 // found — reset or cancel") that no timeout can dismiss and that stalls or
 // crashes a non-interactive install, especially over SSH. With the keyring
@@ -24,16 +24,16 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
-// service is the keyring service name under which all caldensec secrets are
+// service is the keyring service name under which all retoia secrets are
 // stored.
-const service = "caldensec"
+const service = "retoia"
 
-// keyringEnvVar opts into the OS keyring. Unset (the default), caldensec never
+// keyringEnvVar opts into the OS keyring. Unset (the default), retoia never
 // touches the OS keyring, so macOS can never raise its blocking keychain dialog.
-const keyringEnvVar = "CALDENSEC_KEYCHAIN"
+const keyringEnvVar = "RETOIA_KEYCHAIN"
 
-// keyringAllowed reports whether caldensec may touch the OS keyring. It is
-// opt-in: only CALDENSEC_KEYCHAIN=1 enables it. See the package doc for why the
+// keyringAllowed reports whether retoia may touch the OS keyring. It is
+// opt-in: only RETOIA_KEYCHAIN=1 enables it. See the package doc for why the
 // keyring is off by default.
 func keyringAllowed() bool {
 	return os.Getenv(keyringEnvVar) == "1"
@@ -159,24 +159,24 @@ type fileStore struct {
 	baseDir string
 }
 
-// defaultFileStore returns a fileStore rooted at ~/.config/caldensec.
+// defaultFileStore returns a fileStore rooted at ~/.config/retoia.
 func defaultFileStore() *fileStore {
 	dir, err := configDir()
 	if err != nil {
 		// Fall back to a relative directory rather than panicking; Set/Get
 		// will surface any resulting I/O error to the caller.
-		dir = ".config/caldensec"
+		dir = ".config/retoia"
 	}
 	return &fileStore{baseDir: dir}
 }
 
-// configDir returns ~/.config/caldensec.
+// configDir returns ~/.config/retoia.
 func configDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("keystore: resolve home directory: %w", err)
 	}
-	return filepath.Join(home, ".config", "caldensec"), nil
+	return filepath.Join(home, ".config", "retoia"), nil
 }
 
 func (fs *fileStore) path() string {

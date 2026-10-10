@@ -13,7 +13,7 @@ func TestKeyStoreWarning(t *testing.T) {
 		t.Error("nil error should yield no warning")
 	}
 	w := keyStoreWarning(errors.New("keychain denied"))
-	for _, want := range []string{"NOT be saved", "keychain denied", "CALDENSEC_API_KEY"} {
+	for _, want := range []string{"NOT be saved", "keychain denied", "RETOIA_API_KEY"} {
 		if !strings.Contains(w, want) {
 			t.Errorf("warning missing %q: %q", want, w)
 		}

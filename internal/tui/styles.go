@@ -15,7 +15,7 @@ import (
 // look. Colors are fixed (not adaptive) because the UI forces a black field.
 var (
 	colorBlack  = lipgloss.Color("0")
-	colorRed    = lipgloss.Color("9")  // the CaldenSec wordmark
+	colorRed    = lipgloss.Color("9")  // the Reto IA wordmark
 	colorAccent = lipgloss.Color("10") // green: selection, active breadcrumb, border
 	colorWhite  = lipgloss.Color("15") // body text
 	colorMuted  = lipgloss.Color("245")
@@ -102,7 +102,7 @@ func cardContentWidth(termWidth int) int {
 // subtitle, the breadcrumb line, a blank spacer, then body (the active
 // list's own View), all sized to termWidth.
 func renderCard(termWidth int, subtitle, breadcrumb, body string) string {
-	header := titleAppStyle.Render("CaldenSec") + titleSubStyle.Render(" · "+subtitle)
+	header := titleAppStyle.Render("Reto IA") + titleSubStyle.Render(" · "+subtitle)
 	content := header + "\n" + breadcrumb + "\n\n" + body
 	// lipgloss Width includes horizontal padding, so add it back: the text area
 	// must equal cardContentWidth (what the embedded list is sized to), or a

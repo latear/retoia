@@ -39,7 +39,7 @@ func TestConfigureEngramMCP(t *testing.T) {
 	}
 
 	// The pre-existing provider block is untouched.
-	if !gjson.GetBytes(data, "provider.caldensec.models.model-a").Exists() {
+	if !gjson.GetBytes(data, "provider.retoia.models.model-a").Exists() {
 		t.Error("existing provider block was lost")
 	}
 
@@ -52,7 +52,7 @@ func TestConfigureEngramMCP(t *testing.T) {
 func TestConfigureEngramMCP_PreservesExistingMCP(t *testing.T) {
 	cfg := filepath.Join(t.TempDir(), "opencode.json")
 	seed := `{
-	  "provider": {"caldensec": {"options": {"baseURL": "https://gateway.example/v1"}}},
+	  "provider": {"retoia": {"options": {"baseURL": "https://gateway.example/v1"}}},
 	  "mcp": {"context7": {"type": "remote", "url": "https://mcp.context7.com/mcp"}}
 	}`
 	if err := os.WriteFile(cfg, []byte(seed), 0o644); err != nil {
@@ -70,7 +70,7 @@ func TestConfigureEngramMCP_PreservesExistingMCP(t *testing.T) {
 	if got := gjson.GetBytes(data, "mcp.engram.command.0").String(); got != "/usr/local/bin/engram" {
 		t.Errorf("engram command[0] = %q", got)
 	}
-	if got := gjson.GetBytes(data, "provider.caldensec.options.baseURL").String(); got != "https://gateway.example/v1" {
+	if got := gjson.GetBytes(data, "provider.retoia.options.baseURL").String(); got != "https://gateway.example/v1" {
 		t.Errorf("provider baseURL was lost: %q", got)
 	}
 }

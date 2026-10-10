@@ -6,7 +6,7 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	"github.com/ficopix/caldensec/internal/config"
+	"github.com/retoia/retoia-cli/internal/config"
 )
 
 func TestEnsureConfig(t *testing.T) {
@@ -70,8 +70,8 @@ func TestAddProvider(t *testing.T) {
 	}
 
 	// The pre-existing gateway provider is untouched.
-	if !gjson.GetBytes(data, "provider.caldensec.models.model-a").Exists() {
-		t.Error("existing provider.caldensec was lost")
+	if !gjson.GetBytes(data, "provider.retoia.models.model-a").Exists() {
+		t.Error("existing provider.retoia was lost")
 	}
 	if _, err := os.Stat(cfg + providerBackupSuffix); err != nil {
 		t.Errorf("backup not created: %v", err)
@@ -102,7 +102,7 @@ func TestAddProviderWritesLimits(t *testing.T) {
 	}
 
 	// Env override applies to models without an explicit limit.
-	t.Setenv("CALDENSEC_CONTEXT_LIMIT", "65536")
+	t.Setenv("RETOIA_CONTEXT_LIMIT", "65536")
 	cfg2 := copySample(t)
 	if err := AddProvider(cfg2, "zai", "https://api.z.ai/v1", []config.Model{{ID: "m"}}); err != nil {
 		t.Fatalf("AddProvider: %v", err)

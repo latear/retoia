@@ -11,17 +11,17 @@ import (
 )
 
 // tuiBackupSuffix names the backup taken before writing tui.json.
-const tuiBackupSuffix = ".bak-calden-tui"
+const tuiBackupSuffix = ".bak-retoia-tui"
 
-// CaldenThemeName is the OpenCode theme the suite ships and selects in tui.json.
-const CaldenThemeName = "calden"
+// RetoiaThemeName is the OpenCode theme the suite ships and selects in tui.json.
+const RetoiaThemeName = "retoia"
 
-// caldenThemeJSON is the CaldenSec OpenCode theme: a flat, minimalist dark look
+// retoiaThemeJSON is the Reto IA OpenCode theme: a flat, minimalist dark look
 // where the sidebar, the editor, and the input box share ONE uniform background
 // (nothing reads as a separate "box"), and the only structure is the red border
 // lines. Text is soft off-white, non-structural colors stay neutral, and red is
 // reserved for the lines, the accent/focus, and errors.
-const caldenThemeJSON = `{
+const retoiaThemeJSON = `{
   "$schema": "https://opencode.ai/theme.json",
   "theme": {
     "primary": "#E04343",
@@ -43,35 +43,35 @@ const caldenThemeJSON = `{
 }
 `
 
-// WriteCaldenTheme writes the "calden" theme into <configDir>/themes/calden.json
-// (creating the dir), so "theme": "calden" in tui.json resolves to it. Returns
+// WriteRetoiaTheme writes the "retoia" theme into <configDir>/themes/retoia.json
+// (creating the dir), so "theme": "retoia" in tui.json resolves to it. Returns
 // the written path.
-func WriteCaldenTheme(configDir string) (string, error) {
+func WriteRetoiaTheme(configDir string) (string, error) {
 	dir := filepath.Join(configDir, "themes")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("creating themes dir %q: %w", dir, err)
 	}
-	path := filepath.Join(dir, CaldenThemeName+".json")
-	if err := os.WriteFile(path, []byte(caldenThemeJSON), 0o644); err != nil {
+	path := filepath.Join(dir, RetoiaThemeName+".json")
+	if err := os.WriteFile(path, []byte(retoiaThemeJSON), 0o644); err != nil {
 		return "", fmt.Errorf("writing theme %q: %w", path, err)
 	}
 	return path, nil
 }
 
-// CaldenLogoPluginName is the base name of the home-screen logo TUI plugin file.
-const CaldenLogoPluginName = "calden-logo.tsx"
+// RetoiaLogoPluginName is the base name of the home-screen logo TUI plugin file.
+const RetoiaLogoPluginName = "retoia-logo.tsx"
 
-// caldenLogoPluginTSX is an OpenCode TUI plugin that renders the CaldenSec
+// retoiaLogoPluginTSX is an OpenCode TUI plugin that renders the Reto IA
 // wordmark in the home_logo slot. OpenCode's own startup logo is compiled into
 // its binary and not themeable; a plugin's home_logo slot is the supported way
 // to replace it (the same mechanism gentle-ai's logo uses).
-const caldenLogoPluginTSX = `// @ts-nocheck
+const retoiaLogoPluginTSX = `// @ts-nocheck
 /** @jsxImportSource @opentui/solid */
 import type { TuiPlugin } from "@opencode-ai/plugin/tui"
 import { useTerminalDimensions } from "@opentui/solid"
 import { createMemo } from "solid-js"
 
-const id = "calden-logo"
+const id = "retoia-logo"
 
 const art = [
   " ██████╗ █████╗ ██╗     ██████╗ ███████╗███╗   ██╗███████╗███████╗ ██████╗",
@@ -87,7 +87,7 @@ const art = [
 const artW = Math.max(...art.map((l) => Array.from(l).length))
 const artFull = art.map((l) => l + " ".repeat(artW - Array.from(l).length))
 
-const compactArt = ["▞ CaldenSec ▚"]
+const compactArt = ["▞ Reto IA ▚"]
 
 const Logo = () => {
   const dim = useTerminalDimensions()
@@ -113,30 +113,30 @@ const tui: TuiPlugin = async (api) => {
   })
 }
 
-const plugin = { id: "calden-logo", tui }
+const plugin = { id: "retoia-logo", tui }
 export default plugin
 `
 
-// WriteCaldenLogoPlugin writes the CaldenSec home-screen logo TUI plugin into
-// <configDir>/tui-plugins/calden-logo.tsx and returns its path, for registration
+// WriteRetoiaLogoPlugin writes the Reto IA home-screen logo TUI plugin into
+// <configDir>/tui-plugins/retoia-logo.tsx and returns its path, for registration
 // in tui.json's "plugin" list.
-func WriteCaldenLogoPlugin(configDir string) (string, error) {
+func WriteRetoiaLogoPlugin(configDir string) (string, error) {
 	dir := filepath.Join(configDir, "tui-plugins")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("creating tui-plugins dir %q: %w", dir, err)
 	}
-	path := filepath.Join(dir, CaldenLogoPluginName)
-	if err := os.WriteFile(path, []byte(caldenLogoPluginTSX), 0o644); err != nil {
+	path := filepath.Join(dir, RetoiaLogoPluginName)
+	if err := os.WriteFile(path, []byte(retoiaLogoPluginTSX), 0o644); err != nil {
 		return "", fmt.Errorf("writing logo plugin %q: %w", path, err)
 	}
 	return path, nil
 }
 
-// RemoveCaldenTheme deletes the shipped theme file and, when tui.json still
-// selects "calden", clears that key so OpenCode falls back to its default. No-op
+// RemoveRetoiaTheme deletes the shipped theme file and, when tui.json still
+// selects "retoia", clears that key so OpenCode falls back to its default. No-op
 // for anything it did not set.
-func RemoveCaldenTheme(configDir string) error {
-	themePath := filepath.Join(configDir, "themes", CaldenThemeName+".json")
+func RemoveRetoiaTheme(configDir string) error {
+	themePath := filepath.Join(configDir, "themes", RetoiaThemeName+".json")
 	if err := os.Remove(themePath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("removing theme %q: %w", themePath, err)
 	}
@@ -148,7 +148,7 @@ func RemoveCaldenTheme(configDir string) error {
 		}
 		return err
 	}
-	if !gjson.ValidBytes(data) || gjson.GetBytes(data, "theme").String() != CaldenThemeName {
+	if !gjson.ValidBytes(data) || gjson.GetBytes(data, "theme").String() != RetoiaThemeName {
 		return nil // not ours to clear
 	}
 	updated, err := sjson.DeleteBytes(data, "theme")
@@ -196,13 +196,13 @@ func SetTUITheme(tuiPath, theme string) error {
 	return nil
 }
 
-// CaldenTUIPlugins are the OpenCode TUI plugins the suite installs for a richer
+// RetoiaTUIPlugins are the OpenCode TUI plugins the suite installs for a richer
 // sidebar: sub-agent activity and a task/plan panel. They are community plugins
 // that OpenCode fetches (via Bun) from npm at start and caches under
 // ~/.cache/opencode/node_modules (require OpenCode 1.18+). Versions are pinned
 // for reproducibility and to skip the npm "latest" lookup on a cold cache. The
 // features themselves (subagents, todos) are native — these only add the panels.
-var CaldenTUIPlugins = []string{
+var RetoiaTUIPlugins = []string{
 	"opencode-agents-monitor@0.1.2", // sub-agents in the sidebar
 	"opencode-todo@0.0.3",           // task / plan backlog panel
 }

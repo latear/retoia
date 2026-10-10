@@ -8,9 +8,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/ficopix/caldensec/internal/config"
-	"github.com/ficopix/caldensec/internal/gateway"
-	"github.com/ficopix/caldensec/internal/keystore"
+	"github.com/retoia/retoia-cli/internal/config"
+	"github.com/retoia/retoia-cli/internal/gateway"
+	"github.com/retoia/retoia-cli/internal/keystore"
 )
 
 // gatewayAccount is the keystore account under which the validated server key
@@ -18,7 +18,7 @@ import (
 const gatewayAccount = "gateway"
 
 // keyPrompt is the instruction shown above the masked input.
-const keyPrompt = "Enter your CaldenSec gateway server key. Leave empty to keep the current one."
+const keyPrompt = "Enter your Reto IA gateway server key. Leave empty to keep the current one."
 
 // keyState is the phase of the server-key page.
 type keyState int
@@ -71,7 +71,7 @@ func keyStoreWarning(err error) string {
 	}
 	return "\n⚠ The gateway key was validated but could NOT be saved (" + err.Error() + ").\n" +
 		"  It won't persist — later runs and the sandbox container won't find it.\n" +
-		"  Work around it: export CALDENSEC_API_KEY=<your key> before re-running."
+		"  Work around it: export RETOIA_API_KEY=<your key> before re-running."
 }
 
 // newKeyModel builds page 2 with a focused, masked input, reading any stored

@@ -7,7 +7,7 @@ compatibility_date = "2026-01-01"
 pages_build_output_dir = "."
 
 [vars]
-GITHUB_REPO = "ficopix/caldensec"
+GITHUB_REPO = "TBD_OWNER/TBD_REPO"
 HOME_URL = "https://fico.ar"
 # PUBLIC_BASE = "https://cs-updates.fico.ar"   # optional; defaults to the request origin
 # NOTE: do NOT put LITELLM_URL here — [vars] land in the committed repo and the

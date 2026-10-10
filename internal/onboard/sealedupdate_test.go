@@ -3,7 +3,7 @@ package onboard
 import (
 	"testing"
 
-	"github.com/ficopix/caldensec/internal/urlseal"
+	"github.com/retoia/retoia-cli/internal/urlseal"
 )
 
 func TestUnsealUpdateBase(t *testing.T) {

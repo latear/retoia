@@ -12,11 +12,11 @@ func TestPlatformKey(t *testing.T) {
 		want string
 		ok   bool
 	}{
-		"caldensec_mac_arm64.tar.gz":     {"mac_arm64", true},
-		"caldensec_linux_amd64.tar.gz":   {"linux_amd64", true},
-		"checksums.txt":                  {"", false},
-		"caldensec_mac_arm64.tar.gz.sig": {"", false}, // sig sibling, not an archive
-		"LICENSE":                        {"", false},
+		"retoia_mac_arm64.tar.gz":     {"mac_arm64", true},
+		"retoia_linux_amd64.tar.gz":   {"linux_amd64", true},
+		"checksums.txt":               {"", false},
+		"retoia_mac_arm64.tar.gz.sig": {"", false}, // sig sibling, not an archive
+		"LICENSE":                     {"", false},
 	}
 	for name, c := range cases {
 		got, ok := platformKey(name)
@@ -27,11 +27,11 @@ func TestPlatformKey(t *testing.T) {
 }
 
 func TestParseChecksums(t *testing.T) {
-	in := "abc123  caldensec_mac_arm64.tar.gz\ndef456  caldensec_linux_amd64.tar.gz\n\n"
+	in := "abc123  retoia_mac_arm64.tar.gz\ndef456  retoia_linux_amd64.tar.gz\n\n"
 	got := parseChecksums(in)
 	want := map[string]string{
-		"caldensec_mac_arm64.tar.gz":   "abc123",
-		"caldensec_linux_amd64.tar.gz": "def456",
+		"retoia_mac_arm64.tar.gz":   "abc123",
+		"retoia_linux_amd64.tar.gz": "def456",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("parseChecksums = %v, want %v", got, want)
@@ -52,7 +52,7 @@ func TestAuthorizeRejectsWithoutKey(t *testing.T) {
 	s := &server{keys: []string{"sk-good"}}
 	// no Authorization header -> 401, handler must not run
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/caldensec/manifest.json", nil)
+	req := httptest.NewRequest(http.MethodGet, "/retoia/manifest.json", nil)
 	if s.authorize(rec, req) {
 		t.Error("authorize should fail without a bearer key")
 	}
@@ -62,7 +62,7 @@ func TestAuthorizeRejectsWithoutKey(t *testing.T) {
 
 	// valid allowlist key -> ok
 	rec2 := httptest.NewRecorder()
-	req2 := httptest.NewRequest(http.MethodGet, "/caldensec/manifest.json", nil)
+	req2 := httptest.NewRequest(http.MethodGet, "/retoia/manifest.json", nil)
 	req2.Header.Set("Authorization", "Bearer sk-good")
 	if !s.authorize(rec2, req2) {
 		t.Error("authorize should accept an allowlisted key")

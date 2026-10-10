@@ -12,7 +12,7 @@ import (
 )
 
 func TestBaseFromProvider(t *testing.T) {
-	t.Setenv("CALDENSEC_UPDATE_BASE", "")
+	t.Setenv("RETOIA_UPDATE_BASE", "")
 	got, err := BaseFromProvider("https://gw.example/v1")
 	if err != nil {
 		t.Fatalf("BaseFromProvider: %v", err)
@@ -21,12 +21,12 @@ func TestBaseFromProvider(t *testing.T) {
 		t.Errorf("derived base = %q, want https://gw.example", got)
 	}
 
-	t.Setenv("CALDENSEC_UPDATE_BASE", "https://override.example/")
+	t.Setenv("RETOIA_UPDATE_BASE", "https://override.example/")
 	if got, _ := BaseFromProvider("https://gw.example/v1"); got != "https://override.example" {
 		t.Errorf("env override = %q, want https://override.example (trailing slash trimmed)", got)
 	}
 
-	t.Setenv("CALDENSEC_UPDATE_BASE", "")
+	t.Setenv("RETOIA_UPDATE_BASE", "")
 	if _, err := BaseFromProvider(""); err == nil {
 		t.Error("expected an error when no baseURL and no env override")
 	}
@@ -66,7 +66,7 @@ func TestVerifyChecksum(t *testing.T) {
 }
 
 func TestExtractBinary(t *testing.T) {
-	// Build a GoReleaser-shaped archive: files wrapped in caldensec/.
+	// Build a GoReleaser-shaped archive: files wrapped in retoia/.
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
@@ -75,8 +75,8 @@ func TestExtractBinary(t *testing.T) {
 		name string
 		body []byte
 	}{
-		{"caldensec/LICENSE", []byte("license text")},
-		{"caldensec/caldensec", want},
+		{"retoia/LICENSE", []byte("license text")},
+		{"retoia/retoia", want},
 	} {
 		if err := tw.WriteHeader(&tar.Header{Name: f.name, Mode: 0o755, Size: int64(len(f.body)), Typeflag: tar.TypeReg}); err != nil {
 			t.Fatal(err)
@@ -99,7 +99,7 @@ func TestExtractBinary(t *testing.T) {
 
 func TestWriteAndRename(t *testing.T) {
 	dir := t.TempDir()
-	target := filepath.Join(dir, "caldensec")
+	target := filepath.Join(dir, "retoia")
 	if err := os.WriteFile(target, []byte("old"), 0o755); err != nil {
 		t.Fatal(err)
 	}

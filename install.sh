@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Instalador de caldensec. Por defecto DESCARGA el binario prearmado del último
+# Instalador de retoia. Por defecto DESCARGA el binario prearmado del último
 # release de GitHub (no requiere Go): el pack de skills viaja dentro del binario.
-# Lo deja en ~/.local/bin y abre el instalador interactivo (caldensec install).
+# Lo deja en ~/.local/bin y abre el instalador interactivo (retoia install).
 #
 # Uso:
 #   ./install.sh                 # baja el binario del release y abre el instalador
@@ -13,16 +13,16 @@
 #   - O exportá GH_TOKEN / GITHUB_TOKEN con un token que pueda leer el release.
 #
 # Una línea (con gh ya autenticado):
-#   curl -fsSL https://raw.githubusercontent.com/ficopix/caldensec/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/TBD_OWNER/TBD_REPO/main/install.sh | bash
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-REPO="ficopix/caldensec"
-BIN="caldensec"
+REPO="TBD_OWNER/TBD_REPO"
+BIN="retoia"
 DEST_DIR="$HOME/.local/bin"
 DEST="$DEST_DIR/$BIN"
-STALE_BIN="$DEST_DIR/calden-models"
+STALE_BIN="$DEST_DIR/retoia-models"
 
 MODE="download"   # download | build
 VERSION=""        # vacío = último release
@@ -42,7 +42,7 @@ while [ $# -gt 0 ]; do
 done
 
 # detect_platform mapea uname a las combinaciones que publica GoReleaser y arma
-# el nombre exacto del asset: caldensec_<os>_<arch>.tar.gz
+# el nombre exacto del asset: retoia_<os>_<arch>.tar.gz
 detect_platform() {
   local os arch
   case "$(uname -s)" in
@@ -104,7 +104,7 @@ download_binary() {
   verify_checksum "$tmp" "$ASSET"
 
   tar -xzf "$tmp/$ASSET" -C "$tmp"
-  # The tarball wraps its contents in a caldensec/ folder.
+  # The tarball wraps its contents in a retoia/ folder.
   local binsrc="$tmp/$BIN/$BIN"
   [ -f "$binsrc" ] || binsrc="$tmp/$BIN"
   [ -f "$binsrc" ] || { echo "El archivo no contiene el binario $BIN." >&2; exit 1; }
@@ -154,7 +154,7 @@ build_binary() {
 post_install() {
   if [ -e "$STALE_BIN" ]; then
     rm -f "$STALE_BIN"
-    echo "Se eliminó el binario viejo calden-models: ahora es 'caldensec models'."
+    echo "Se eliminó el binario viejo retoia-models: ahora es 'retoia models'."
   fi
   case ":$PATH:" in
     *":$DEST_DIR:"*) : ;;
@@ -169,10 +169,10 @@ post_install() {
 
 launch_tui() {
   # La passphrase de instalación se pide dentro de la TUI (paso 0). Si preferís
-  # no interactivo, exportá CALDENSEC_UNLOCK antes de correr esto y la TUI se
+  # no interactivo, exportá RETOIA_UNLOCK antes de correr esto y la TUI se
   # saltea el paso 0.
   echo
-  echo "Lanzando el instalador interactivo (caldensec install) ..."
+  echo "Lanzando el instalador interactivo (retoia install) ..."
   if command -v "$BIN" >/dev/null 2>&1; then "$BIN" install; else "$DEST" install; fi
 }
 

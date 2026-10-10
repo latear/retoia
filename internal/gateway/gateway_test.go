@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ficopix/caldensec/internal/config"
+	"github.com/retoia/retoia-cli/internal/config"
 )
 
 // TestFetchModels_HappyPath verifies that a well-formed gateway response is
@@ -467,10 +467,10 @@ func TestFetchModels_PopulatesLimitsFromModelInfo(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/models":
-			w.Write([]byte(`{"data":[{"id":"calden-sk-orca"},{"id":"nolimit"}]}`))
+			w.Write([]byte(`{"data":[{"id":"retoia-sk-orca"},{"id":"nolimit"}]}`))
 		case "/model/info":
 			w.Write([]byte(`{"data":[` +
-				`{"model_name":"calden-sk-orca","model_info":{"max_input_tokens":262144,"max_output_tokens":8192}},` +
+				`{"model_name":"retoia-sk-orca","model_info":{"max_input_tokens":262144,"max_output_tokens":8192}},` +
 				`{"model_name":"nolimit","model_info":{"max_input_tokens":null,"max_output_tokens":null}}` +
 				`]}`))
 		default:
@@ -487,7 +487,7 @@ func TestFetchModels_PopulatesLimitsFromModelInfo(t *testing.T) {
 	for _, m := range models {
 		by[m.ID] = m
 	}
-	if m := by["calden-sk-orca"]; m.ContextLimit != 262144 || m.OutputLimit != 8192 {
+	if m := by["retoia-sk-orca"]; m.ContextLimit != 262144 || m.OutputLimit != 8192 {
 		t.Errorf("orca limits = %d/%d, want 262144/8192", m.ContextLimit, m.OutputLimit)
 	}
 	if m := by["nolimit"]; m.ContextLimit != 0 || m.OutputLimit != 0 {

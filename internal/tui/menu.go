@@ -6,7 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// MenuChoice is the top-level choice of `caldensec models`.
+// MenuChoice is the top-level choice of `retoia models`.
 type MenuChoice int
 
 const (
@@ -33,7 +33,7 @@ type menuModel struct {
 func newMenuModel() menuModel {
 	return menuModel{
 		items: []menuItem{
-			{MenuChange, "Change models", "assign a model to each Calden agent"},
+			{MenuChange, "Change models", "assign a model to each Retoia agent"},
 			{MenuAddCustom, "Add custom models", "add a provider by API (OpenAI, z.ai, OpenRouter, Kimi…)"},
 		},
 		choice: MenuQuit,

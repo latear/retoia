@@ -1,6 +1,6 @@
 # Binaries
-/caldensec
-/calden-models
+/retoia
+/retoia-models
 *.exe
 *.test
 *.out
@@ -31,7 +31,7 @@ bkp/
 
 # Local backups written by the surgical writers (opencode.json, tui.json, …)
 opencode.json.bak-*
-*.bak-calden*
+*.bak-retoia*
 
 # AI development scaffolding (kept local, not published)
 CLAUDE.md

@@ -18,13 +18,13 @@ func TestRunHeadless(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("OPENCODE_AUTH_PATH", filepath.Join(home, "auth.json"))
-	t.Setenv("CALDENSEC_API_KEY", "")
-	t.Setenv("CALDENSEC_UNLOCK", "")
+	t.Setenv("RETOIA_API_KEY", "")
+	t.Setenv("RETOIA_UNLOCK", "")
 
 	cfg := filepath.Join(home, "opencode.json") // does not exist yet
 
 	var buf bytes.Buffer
-	err := RunHeadless(&buf, cfg, "caldensec", "", "", HeadlessOptions{Engram: false})
+	err := RunHeadless(&buf, cfg, "retoia", "", "", HeadlessOptions{Engram: false})
 	if err != nil {
 		t.Fatalf("RunHeadless: %v", err)
 	}
@@ -47,12 +47,12 @@ func TestRunHeadlessWiresContext7(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("OPENCODE_AUTH_PATH", filepath.Join(home, "auth.json"))
-	t.Setenv("CALDENSEC_API_KEY", "")
-	t.Setenv("CALDENSEC_UNLOCK", "")
+	t.Setenv("RETOIA_API_KEY", "")
+	t.Setenv("RETOIA_UNLOCK", "")
 
 	cfg := filepath.Join(home, "opencode.json")
 	var buf bytes.Buffer
-	if err := RunHeadless(&buf, cfg, "caldensec", "", "", HeadlessOptions{Context7: true}); err != nil {
+	if err := RunHeadless(&buf, cfg, "retoia", "", "", HeadlessOptions{Context7: true}); err != nil {
 		t.Fatalf("RunHeadless: %v", err)
 	}
 	data, _ := os.ReadFile(cfg)
@@ -68,16 +68,16 @@ func TestRunHeadlessNoGatewaySkipsProvider(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("OPENCODE_AUTH_PATH", filepath.Join(home, "auth.json"))
-	t.Setenv("CALDENSEC_API_KEY", "")
-	t.Setenv("CALDENSEC_UNLOCK", "")
+	t.Setenv("RETOIA_API_KEY", "")
+	t.Setenv("RETOIA_UNLOCK", "")
 
 	cfg := filepath.Join(home, "opencode.json")
 	var buf bytes.Buffer
-	if err := RunHeadless(&buf, cfg, "caldensec", "", "", HeadlessOptions{}); err != nil {
+	if err := RunHeadless(&buf, cfg, "retoia", "", "", HeadlessOptions{}); err != nil {
 		t.Fatalf("RunHeadless: %v", err)
 	}
 	data, _ := os.ReadFile(cfg)
-	if gjson.GetBytes(data, "provider.caldensec.options.baseURL").Exists() {
+	if gjson.GetBytes(data, "provider.retoia.options.baseURL").Exists() {
 		t.Error("no empty provider baseURL should be written when there is no gateway")
 	}
 	if !strings.Contains(buf.String(), "gateway: none") {
@@ -89,8 +89,8 @@ func TestRunHeadlessNoGatewaySkipsProvider(t *testing.T) {
 // opencode.json + tui.json into cfgDir and does NOT include the gateway
 // credential (auth.json), which the container writes at start from the env.
 func TestStageSandboxConfig(t *testing.T) {
-	t.Setenv("CALDENSEC_API_KEY", "")
-	t.Setenv("CALDENSEC_UNLOCK", "")
+	t.Setenv("RETOIA_API_KEY", "")
+	t.Setenv("RETOIA_UNLOCK", "")
 	cfgDir := filepath.Join(t.TempDir(), "opencode-config")
 
 	if err := stageSandboxConfig(cfgDir, "", "", "", "", defaultSandboxExtras()); err != nil {
@@ -115,10 +115,10 @@ func TestStageSandboxConfig(t *testing.T) {
 	}
 	// The logo plugin must be registered with the CONTAINER path, not the
 	// throwaway stage HOME (which does not exist inside the container).
-	if !strings.Contains(string(tuiData), "/root/.config/opencode/tui-plugins/calden-logo.tsx") {
+	if !strings.Contains(string(tuiData), "/root/.config/opencode/tui-plugins/retoia-logo.tsx") {
 		t.Errorf("logo plugin not registered at the container path; tui.json=%s", tuiData)
 	}
-	if strings.Contains(string(tuiData), "caldensec-sandbox-stage-") {
+	if strings.Contains(string(tuiData), "retoia-sandbox-stage-") {
 		t.Errorf("tui.json still references the throwaway stage path: %s", tuiData)
 	}
 	// The gateway credential must NOT be baked into the config dir.

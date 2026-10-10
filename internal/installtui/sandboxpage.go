@@ -11,12 +11,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tidwall/gjson"
 
-	"github.com/ficopix/caldensec/internal/config"
-	"github.com/ficopix/caldensec/internal/installer"
-	"github.com/ficopix/caldensec/internal/keystore"
-	"github.com/ficopix/caldensec/internal/mcpservers"
-	"github.com/ficopix/caldensec/internal/onboard"
-	"github.com/ficopix/caldensec/internal/sandbox"
+	"github.com/retoia/retoia-cli/internal/config"
+	"github.com/retoia/retoia-cli/internal/installer"
+	"github.com/retoia/retoia-cli/internal/keystore"
+	"github.com/retoia/retoia-cli/internal/mcpservers"
+	"github.com/retoia/retoia-cli/internal/onboard"
+	"github.com/retoia/retoia-cli/internal/sandbox"
 )
 
 // mcpRuntimes are the launchers available inside the sandbox container, so a
@@ -30,7 +30,7 @@ var mcpRuntimes = map[string]bool{
 // inheritCompatibleMCP copies the compatible MCP servers from the host config at
 // hostConfig into the staged config at stageCfg: remote servers, and local
 // servers whose command starts with a runtime present in the container. The
-// config MCP (needs the caldensec binary) and anything else are skipped. Best
+// config MCP (needs the retoia binary) and anything else are skipped. Best
 // effort: errors are ignored so a broken host entry never fails the sandbox.
 func inheritCompatibleMCP(stageCfg, hostConfig string) {
 	data, err := os.ReadFile(hostConfig)
@@ -191,7 +191,7 @@ func (m sandboxModel) View() string {
 // what to do.
 type existsPromptModel struct {
 	running        bool
-	builtVersion   string // caldensec version stamped on the image ("" if unlabeled)
+	builtVersion   string // retoia version stamped on the image ("" if unlabeled)
 	currentVersion string // the running binary's version
 	age            string // how long ago the image was built
 	outdated       bool   // the image's version differs from the current binary
@@ -232,7 +232,7 @@ func (m existsPromptModel) View() string {
 		status = "built and running"
 	}
 	var b strings.Builder
-	b.WriteString(okStyle.Render("✓ A CaldenSec sandbox is already "+status+".") + "\n")
+	b.WriteString(okStyle.Render("✓ A Reto IA sandbox is already "+status+".") + "\n")
 
 	info := ""
 	if m.builtVersion != "" {
@@ -252,7 +252,7 @@ func (m existsPromptModel) View() string {
 	}
 
 	b.WriteString("\n" + mutedStyle.Render("What do you want to do?") + "\n\n")
-	b.WriteString("  " + accentStyle.Render("o") + "  open it " + mutedStyle.Render("(enter the Calden agents)") + "\n")
+	b.WriteString("  " + accentStyle.Render("o") + "  open it " + mutedStyle.Render("(enter the Retoia agents)") + "\n")
 	rebuildHint := "(apply the latest config)"
 	if m.outdated {
 		rebuildHint = "(recommended — updates to " + m.currentVersion + ")"
@@ -274,10 +274,10 @@ func runSandboxExistsPrompt(m existsPromptModel) (string, error) {
 }
 
 // stagedModelCount returns how many models the staged config exposes under
-// provider.caldensec.models (0 means the gateway returned none — usually a
+// provider.retoia.models (0 means the gateway returned none — usually a
 // rejected key — so every agent model would be invalid).
 func stagedModelCount(cfgDir string) int {
-	cfg, err := config.Load(filepath.Join(cfgDir, "opencode.json"), "caldensec")
+	cfg, err := config.Load(filepath.Join(cfgDir, "opencode.json"), "retoia")
 	if err != nil {
 		return 0
 	}
@@ -290,24 +290,24 @@ func stagedModelCount(cfgDir string) int {
 // library's own restore does not fully take (seen over SSH).
 func restoreTerminal() { fmt.Print("\x1b[?1049l\x1b[?25h\x1b[0m") }
 
-// rebuildSandboxChild runs `caldensec sandbox rebuild` as a fresh child process,
+// rebuildSandboxChild runs `retoia sandbox rebuild` as a fresh child process,
 // so the build runs with a clean terminal (no Bubble Tea residue) — the same
 // no-TUI path that renders reliably when run on its own. withTor controls the
 // Tor build-arg the child passes to the image build.
 func rebuildSandboxChild(dir string, withTor bool) error {
 	exe, err := os.Executable()
 	if err != nil || exe == "" {
-		exe = "caldensec"
+		exe = "retoia"
 	}
 	cmd := exec.Command(exe, "sandbox", "rebuild", "--dir", dir)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	// Install Tor (build arg) and enable its transparent proxy at runtime
-	// (CALDENSEC_TOR) together, so "Tor on" means egress is actually anonymized.
-	cmd.Env = append(os.Environ(), "CALDENSEC_WITH_TOR="+torArg(withTor), "CALDENSEC_TOR="+torArg(withTor))
+	// (RETOIA_TOR) together, so "Tor on" means egress is actually anonymized.
+	cmd.Env = append(os.Environ(), "RETOIA_WITH_TOR="+torArg(withTor), "RETOIA_TOR="+torArg(withTor))
 	return cmd.Run()
 }
 
-// torArg maps the Tor toggle to the CALDENSEC_WITH_TOR build-arg value.
+// torArg maps the Tor toggle to the RETOIA_WITH_TOR build-arg value.
 func torArg(on bool) string {
 	if on {
 		return "1"
@@ -319,15 +319,15 @@ func torArg(on bool) string {
 // renders), from the compose file in dir.
 func attachSandbox(dir string) error {
 	cmd := exec.Command("docker", "compose", "-f", filepath.Join(dir, "compose.sandbox.yaml"),
-		"exec", "caldensec", "script", "-qec", "opencode", "/dev/null")
+		"exec", "retoia", "script", "-qec", "opencode", "/dev/null")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	return cmd.Run()
 }
 
-// runSandbox builds the repo-less sandbox: it generates the Calden config on the
-// host (with this caldensec binary), scaffolds the Docker artifacts in the CWD,
+// runSandbox builds the repo-less sandbox: it generates the Retoia config on the
+// host (with this retoia binary), scaffolds the Docker artifacts in the CWD,
 // then — in the TUI — ensures Docker is available (Colima on macOS) and builds &
-// starts the container. No caldensec repo or release is needed: the image is
+// starts the container. No retoia repo or release is needed: the image is
 // assembled from public pieces plus the baked config.
 func runSandbox(hostConfig, base, passphrase string) error {
 	cwd, err := os.Getwd()
@@ -378,14 +378,14 @@ func runSandbox(hostConfig, base, passphrase string) error {
 				if w := keyStoreWarning(key.storeErr); w != "" {
 					fmt.Println(w)
 				}
-				serverKey := onboard.ResolveServerKey(os.Getenv("CALDENSEC_API_KEY"), keystore.Get)
+				serverKey := onboard.ResolveServerKey(os.Getenv("RETOIA_API_KEY"), keystore.Get)
 				fmt.Println("Refreshing the sandbox config against the gateway…")
 				if serr := stageSandboxConfig(cfgDir, hostConfig, base, passphrase, serverKey, ex); serr != nil {
 					return fmt.Errorf("refreshing the sandbox config: %w", serr)
 				}
 				if stagedModelCount(cfgDir) == 0 {
 					fmt.Println("⚠ The gateway returned no models — the key was likely rejected (HTTP 401).")
-					fmt.Println("  Enter a valid key on the key page, or run with CALDENSEC_API_KEY=<valid key>.")
+					fmt.Println("  Enter a valid key on the key page, or run with RETOIA_API_KEY=<valid key>.")
 				}
 			} else {
 				restoreTerminal()
@@ -429,10 +429,10 @@ func runSandbox(hostConfig, base, passphrase string) error {
 	// the OS keyring). Passed explicitly into staging so the config bake can
 	// validate against the gateway and fetch the models, and passed to the
 	// container at runtime — never baked into the image.
-	serverKey := onboard.ResolveServerKey(os.Getenv("CALDENSEC_API_KEY"), keystore.Get)
+	serverKey := onboard.ResolveServerKey(os.Getenv("RETOIA_API_KEY"), keystore.Get)
 
-	// 1. Generate the Calden config on the host, into ./opencode-config (the
-	// image bakes it). The container has no caldensec binary, so no config MCP.
+	// 1. Generate the Retoia config on the host, into ./opencode-config (the
+	// image bakes it). The container has no retoia binary, so no config MCP.
 	if err := stageSandboxConfig(cfgDir, hostConfig, base, passphrase, serverKey, ex); err != nil {
 		return fmt.Errorf("generating the sandbox config: %w", err)
 	}
@@ -452,7 +452,7 @@ func runSandbox(hostConfig, base, passphrase string) error {
 	sm := final.(sandboxModel)
 	if sm.cancel || !sm.proceed {
 		fmt.Println("Docker not ready — the sandbox is scaffolded; build it when Docker is up:")
-		fmt.Println("  CALDENSEC_API_KEY=<key> docker compose -f compose.sandbox.yaml up -d --build")
+		fmt.Println("  RETOIA_API_KEY=<key> docker compose -f compose.sandbox.yaml up -d --build")
 		return nil
 	}
 
@@ -476,27 +476,27 @@ func runSandbox(hostConfig, base, passphrase string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Dir = cwd
 	// Tor on ⇒ install it (build arg) AND route all public egress through it at
-	// runtime (CALDENSEC_TOR, read by the entrypoint and passed by the compose).
+	// runtime (RETOIA_TOR, read by the entrypoint and passed by the compose).
 	cmd.Env = append(os.Environ(),
-		"CALDENSEC_API_KEY="+serverKey, "CALDENSEC_VERSION="+Version,
-		"CALDENSEC_WITH_TOR="+torArg(ex.tor), "CALDENSEC_TOR="+torArg(ex.tor))
+		"RETOIA_API_KEY="+serverKey, "RETOIA_VERSION="+Version,
+		"RETOIA_WITH_TOR="+torArg(ex.tor), "RETOIA_TOR="+torArg(ex.tor))
 	cmd.Env = append(cmd.Env, sandbox.BuildEnv()...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("building the sandbox (%s %s): %w", name, strings.Join(args, " "), err)
 	}
-	fmt.Println("\nSandbox is up. Open the Calden agents in it with:")
-	fmt.Println("  caldensec sandbox open      (or `caldensec sandbox shell` for a shell)")
+	fmt.Println("\nSandbox is up. Open the Retoia agents in it with:")
+	fmt.Println("  retoia sandbox open      (or `retoia sandbox shell` for a shell)")
 	fmt.Println("Your host OpenCode was not touched.")
 	return nil
 }
 
-// stageSandboxConfig generates the Calden OpenCode config (opencode.json + skills
+// stageSandboxConfig generates the Retoia OpenCode config (opencode.json + skills
 // + tui.json) into cfgDir, by running the headless install against a throwaway
 // HOME and copying the produced config dir out. The gateway credential is NOT
 // included (the container writes it at start from the environment).
 func stageSandboxConfig(cfgDir, hostConfig, base, passphrase, serverKey string, ex sandboxExtras) error {
-	stageHome, err := os.MkdirTemp("", "caldensec-sandbox-stage-")
+	stageHome, err := os.MkdirTemp("", "retoia-sandbox-stage-")
 	if err != nil {
 		return err
 	}
@@ -504,7 +504,7 @@ func stageSandboxConfig(cfgDir, hostConfig, base, passphrase, serverKey string, 
 
 	// Redirect HOME and clear the OpenCode path overrides so everything lands
 	// under the throwaway home, never touching the real host. Pass the key via
-	// CALDENSEC_API_KEY so the model validation does not depend on keyring
+	// RETOIA_API_KEY so the model validation does not depend on keyring
 	// access under the redirected HOME (which can come back empty → no models).
 	env := map[string]string{
 		"HOME":                stageHome,
@@ -513,7 +513,7 @@ func stageSandboxConfig(cfgDir, hostConfig, base, passphrase, serverKey string, 
 		"OPENCODE_SKILLS_SRC": "",
 	}
 	if serverKey != "" {
-		env["CALDENSEC_API_KEY"] = serverKey
+		env["RETOIA_API_KEY"] = serverKey
 	}
 	restore := withEnv(env)
 	defer restore()
@@ -522,7 +522,7 @@ func stageSandboxConfig(cfgDir, hostConfig, base, passphrase, serverKey string, 
 	if err := os.MkdirAll(filepath.Dir(stageCfg), 0o755); err != nil {
 		return err
 	}
-	if err := RunHeadless(io.Discard, stageCfg, "caldensec", base, passphrase,
+	if err := RunHeadless(io.Discard, stageCfg, "retoia", base, passphrase,
 		HeadlessOptions{TUIPlugins: ex.plugins}); err != nil {
 		return err
 	}
@@ -607,7 +607,7 @@ func copyDir(src, dst string) error {
 			return err
 		}
 		for _, e := range entries {
-			if strings.Contains(e.Name(), ".bak-calden") {
+			if strings.Contains(e.Name(), ".bak-retoia") {
 				continue // don't bake the surgical-writer backups into the image
 			}
 			if err := copyDir(filepath.Join(src, e.Name()), filepath.Join(dst, e.Name())); err != nil {

@@ -9,7 +9,7 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-PASS="${CALDENSEC_UNLOCK:-}"
+PASS="${RETOIA_UNLOCK:-}"
 if [ -z "$PASS" ]; then
   [ -r /dev/tty ] || { echo "No hay TTY para pedir la clave. Corré el script en una terminal interactiva." >&2; exit 1; }
   printf "Passphrase del instalador (se escribe oculta): " >&2
@@ -19,4 +19,4 @@ fi
 
 echo "Verificando que los 3 templates + la URL desellen con esta clave ..." >&2
 echo >&2
-CALDENSEC_UNLOCK="$PASS" go test -run TestRealTemplates_Unseal -v ./internal/onboard
+RETOIA_UNLOCK="$PASS" go test -run TestRealTemplates_Unseal -v ./internal/onboard

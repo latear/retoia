@@ -1,4 +1,4 @@
-// Package updater implements `caldensec update`: it fetches a signed manifest
+// Package updater implements `retoia update`: it fetches a signed manifest
 // from a key-gated endpoint derived from the configured gateway, downloads the
 // release archive for the running platform, verifies it (SHA-256 plus, when a
 // public key is embedded, an Ed25519 signature), and atomically replaces the
@@ -27,12 +27,12 @@ import (
 
 // signingPubKeyB64 is the base64-encoded Ed25519 public key releases are signed
 // with. Empty by default: updates then verify the SHA-256 only and print an
-// "unsigned" warning. Generate a key pair with `caldensec update --keygen`, keep
+// "unsigned" warning. Generate a key pair with `retoia update --keygen`, keep
 // the private key as a CI secret that signs each archive, paste the public key
 // here, and rebuild to enforce signatures.
 const signingPubKeyB64 = ""
 
-// Manifest is the JSON the update endpoint serves at /caldensec/manifest.json.
+// Manifest is the JSON the update endpoint serves at /retoia/manifest.json.
 type Manifest struct {
 	Version   string              `json:"version"`
 	Platforms map[string]Platform `json:"platforms"`
@@ -56,14 +56,14 @@ func PlatformKey() string {
 }
 
 // BaseFromProvider derives the update host from a provider baseURL such as
-// "https://gw.example/v1" -> "https://gw.example". $CALDENSEC_UPDATE_BASE wins
+// "https://gw.example/v1" -> "https://gw.example". $RETOIA_UPDATE_BASE wins
 // when set, so the endpoint can be hosted apart from the model gateway.
 func BaseFromProvider(providerBaseURL string) (string, error) {
-	if v := strings.TrimRight(os.Getenv("CALDENSEC_UPDATE_BASE"), "/"); v != "" {
+	if v := strings.TrimRight(os.Getenv("RETOIA_UPDATE_BASE"), "/"); v != "" {
 		return v, nil
 	}
 	if providerBaseURL == "" {
-		return "", fmt.Errorf("no gateway baseURL in opencode.json and $CALDENSEC_UPDATE_BASE unset; cannot locate the update endpoint")
+		return "", fmt.Errorf("no gateway baseURL in opencode.json and $RETOIA_UPDATE_BASE unset; cannot locate the update endpoint")
 	}
 	u, err := url.Parse(providerBaseURL)
 	if err != nil {
@@ -87,7 +87,7 @@ type Options struct {
 // updated and when the binary was already current (it says which).
 func Run(out io.Writer, opt Options) error {
 	if opt.Key == "" {
-		return fmt.Errorf("no gateway key found (keychain, opencode auth.json, or $CALDENSEC_API_KEY); run `caldensec install` or set the key first")
+		return fmt.Errorf("no gateway key found (keychain, opencode auth.json, or $RETOIA_API_KEY); run `retoia install` or set the key first")
 	}
 	client := opt.Client
 	if client == nil {
@@ -126,7 +126,7 @@ func Run(out io.Writer, opt Options) error {
 	if err := replaceSelf(bin); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "Done. caldensec is now %s.\n", displayVersion(m.Version))
+	fmt.Fprintf(out, "Done. retoia is now %s.\n", displayVersion(m.Version))
 	return nil
 }
 
@@ -149,7 +149,7 @@ func CheckLatest(base, key, currentVersion string) (string, bool) {
 }
 
 func fetchManifest(client *http.Client, base, key string) (*Manifest, error) {
-	body, err := get(client, base+"/caldensec/manifest.json", key)
+	body, err := get(client, base+"/retoia/manifest.json", key)
 	if err != nil {
 		return nil, fmt.Errorf("fetching update manifest: %w", err)
 	}
@@ -225,8 +225,8 @@ func verify(archive []byte, plat Platform) error {
 	return nil
 }
 
-// extractBinary pulls the caldensec executable out of the GoReleaser archive,
-// which wraps it as "caldensec/caldensec".
+// extractBinary pulls the retoia executable out of the GoReleaser archive,
+// which wraps it as "retoia/retoia".
 func extractBinary(archive []byte) ([]byte, error) {
 	gz, err := gzip.NewReader(strings.NewReader(string(archive)))
 	if err != nil {
@@ -237,12 +237,12 @@ func extractBinary(archive []byte) ([]byte, error) {
 	for {
 		h, err := tr.Next()
 		if err == io.EOF {
-			return nil, fmt.Errorf("no caldensec binary found in the archive")
+			return nil, fmt.Errorf("no retoia binary found in the archive")
 		}
 		if err != nil {
 			return nil, fmt.Errorf("reading archive: %w", err)
 		}
-		if h.Typeflag == tar.TypeReg && filepath.Base(h.Name) == "caldensec" {
+		if h.Typeflag == tar.TypeReg && filepath.Base(h.Name) == "retoia" {
 			return io.ReadAll(tr)
 		}
 	}
@@ -268,7 +268,7 @@ func replaceSelf(newBinary []byte) error {
 // even while target is the running binary.
 func writeAndRename(target string, data []byte) error {
 	dir := filepath.Dir(target)
-	tmp, err := os.CreateTemp(dir, ".caldensec-update-*")
+	tmp, err := os.CreateTemp(dir, ".retoia-update-*")
 	if err != nil {
 		return fmt.Errorf("the install dir %s is not writable (%w); re-run the install, or use sudo", dir, err)
 	}
