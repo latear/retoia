@@ -1,0 +1,19 @@
+name = "cs-updates"
+compatibility_date = "2026-01-01"
+
+# Cloudflare Pages (advanced mode): the single _worker.js in this dir handles all
+# requests. Deploy with a Pages-scoped token:
+#   cd deploy/cloudflare && wrangler pages deploy .
+pages_build_output_dir = "."
+
+[vars]
+GITHUB_REPO = "ficopix/caldensec"
+HOME_URL = "https://fico.ar"
+# PUBLIC_BASE = "https://cs-updates.fico.ar"   # optional; defaults to the request origin
+# NOTE: do NOT put LITELLM_URL here — [vars] land in the committed repo and the
+# dashboard in the clear. Set it as a SECRET so the gateway URL is not leaked.
+
+# SECRETS — never put these here (they stay encrypted, out of the repo). Set per project:
+#   wrangler pages secret put GITHUB_TOKEN --project-name cs-updates   (required)
+#   wrangler pages secret put LITELLM_URL  --project-name cs-updates   (validate keys vs the gateway)
+#   wrangler pages secret put UPDATE_KEYS  --project-name cs-updates   (optional allowlist)

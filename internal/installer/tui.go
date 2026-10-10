@@ -1,0 +1,334 @@
+package installer
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
+)
+
+// tuiBackupSuffix names the backup taken before writing tui.json.
+const tuiBackupSuffix = ".bak-calden-tui"
+
+// CaldenThemeName is the OpenCode theme the suite ships and selects in tui.json.
+const CaldenThemeName = "calden"
+
+// caldenThemeJSON is the CaldenSec OpenCode theme: a flat, minimalist dark look
+// where the sidebar, the editor, and the input box share ONE uniform background
+// (nothing reads as a separate "box"), and the only structure is the red border
+// lines. Text is soft off-white, non-structural colors stay neutral, and red is
+// reserved for the lines, the accent/focus, and errors.
+const caldenThemeJSON = `{
+  "$schema": "https://opencode.ai/theme.json",
+  "theme": {
+    "primary": "#E04343",
+    "secondary": "#8A8A8A",
+    "accent": "#E04343",
+    "background": "#0E0E10",
+    "backgroundPanel": "#0E0E10",
+    "backgroundElement": "#0E0E10",
+    "text": "#E6E6E6",
+    "textMuted": "#7A7A7A",
+    "border": "#D64545",
+    "borderActive": "#FF5C5C",
+    "borderSubtle": "#3A2222",
+    "error": "#FF5C5C",
+    "warning": "#B8862B",
+    "success": "#4FA96A",
+    "info": "#8A8A8A"
+  }
+}
+`
+
+// WriteCaldenTheme writes the "calden" theme into <configDir>/themes/calden.json
+// (creating the dir), so "theme": "calden" in tui.json resolves to it. Returns
+// the written path.
+func WriteCaldenTheme(configDir string) (string, error) {
+	dir := filepath.Join(configDir, "themes")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("creating themes dir %q: %w", dir, err)
+	}
+	path := filepath.Join(dir, CaldenThemeName+".json")
+	if err := os.WriteFile(path, []byte(caldenThemeJSON), 0o644); err != nil {
+		return "", fmt.Errorf("writing theme %q: %w", path, err)
+	}
+	return path, nil
+}
+
+// CaldenLogoPluginName is the base name of the home-screen logo TUI plugin file.
+const CaldenLogoPluginName = "calden-logo.tsx"
+
+// caldenLogoPluginTSX is an OpenCode TUI plugin that renders the CaldenSec
+// wordmark in the home_logo slot. OpenCode's own startup logo is compiled into
+// its binary and not themeable; a plugin's home_logo slot is the supported way
+// to replace it (the same mechanism gentle-ai's logo uses).
+const caldenLogoPluginTSX = `// @ts-nocheck
+/** @jsxImportSource @opentui/solid */
+import type { TuiPlugin } from "@opencode-ai/plugin/tui"
+import { useTerminalDimensions } from "@opentui/solid"
+import { createMemo } from "solid-js"
+
+const id = "calden-logo"
+
+const art = [
+  " ██████╗ █████╗ ██╗     ██████╗ ███████╗███╗   ██╗███████╗███████╗ ██████╗",
+  "██╔════╝██╔══██╗██║     ██╔══██╗██╔════╝████╗  ██║██╔════╝██╔════╝██╔════╝",
+  "██║     ███████║██║     ██║  ██║█████╗  ██╔██╗ ██║███████╗█████╗  ██║",
+  "██║     ██╔══██║██║     ██║  ██║██╔══╝  ██║╚██╗██║╚════██║██╔══╝  ██║",
+  "╚██████╗██║  ██║███████╗██████╔╝███████╗██║ ╚████║███████║███████╗╚██████╗",
+  " ╚═════╝╚═╝  ╚═╝╚══════╝╚═════╝ ╚══════╝╚═╝  ╚═══╝╚══════╝╚══════╝ ╚═════╝",
+]
+
+// Pad every line to the widest one so centering each line keeps the block
+// aligned (the ANSI-shadow rows differ in length, which otherwise staggers it).
+const artW = Math.max(...art.map((l) => Array.from(l).length))
+const artFull = art.map((l) => l + " ".repeat(artW - Array.from(l).length))
+
+const compactArt = ["▞ CaldenSec ▚"]
+
+const Logo = () => {
+  const dim = useTerminalDimensions()
+  const lines = createMemo(() => (dim().width >= artW ? artFull : compactArt))
+  return (
+    <box flexDirection="column" alignItems="center">
+      {lines().map((line) => (
+        <text fg="red">{line}</text>
+      ))}
+    </box>
+  )
+}
+
+const tui: TuiPlugin = async (api) => {
+  api.slots.register({
+    id,
+    order: 100,
+    slots: {
+      home_logo() {
+        return <Logo />
+      },
+    },
+  })
+}
+
+const plugin = { id: "calden-logo", tui }
+export default plugin
+`
+
+// WriteCaldenLogoPlugin writes the CaldenSec home-screen logo TUI plugin into
+// <configDir>/tui-plugins/calden-logo.tsx and returns its path, for registration
+// in tui.json's "plugin" list.
+func WriteCaldenLogoPlugin(configDir string) (string, error) {
+	dir := filepath.Join(configDir, "tui-plugins")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("creating tui-plugins dir %q: %w", dir, err)
+	}
+	path := filepath.Join(dir, CaldenLogoPluginName)
+	if err := os.WriteFile(path, []byte(caldenLogoPluginTSX), 0o644); err != nil {
+		return "", fmt.Errorf("writing logo plugin %q: %w", path, err)
+	}
+	return path, nil
+}
+
+// RemoveCaldenTheme deletes the shipped theme file and, when tui.json still
+// selects "calden", clears that key so OpenCode falls back to its default. No-op
+// for anything it did not set.
+func RemoveCaldenTheme(configDir string) error {
+	themePath := filepath.Join(configDir, "themes", CaldenThemeName+".json")
+	if err := os.Remove(themePath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing theme %q: %w", themePath, err)
+	}
+	tuiPath := filepath.Join(configDir, "tui.json")
+	data, err := os.ReadFile(tuiPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if !gjson.ValidBytes(data) || gjson.GetBytes(data, "theme").String() != CaldenThemeName {
+		return nil // not ours to clear
+	}
+	updated, err := sjson.DeleteBytes(data, "theme")
+	if err != nil {
+		return fmt.Errorf("clearing tui theme: %w", err)
+	}
+	return os.WriteFile(tuiPath, updated, 0o644)
+}
+
+// SetTUITheme surgically sets "theme" in tui.json, creating the file if missing,
+// backing it up, and revalidating (restoring on failure). A no-op when already set.
+func SetTUITheme(tuiPath, theme string) error {
+	var original []byte
+	if b, err := os.ReadFile(tuiPath); err == nil {
+		original = b
+	} else if os.IsNotExist(err) {
+		original = []byte(`{"$schema":"https://opencode.ai/tui.json"}`)
+	} else {
+		return fmt.Errorf("reading %q: %w", tuiPath, err)
+	}
+	if !gjson.ValidBytes(original) {
+		return fmt.Errorf("%q is not valid JSON", tuiPath)
+	}
+	if gjson.GetBytes(original, "theme").String() == theme {
+		return nil // already selected
+	}
+	backupPath := tuiPath + tuiBackupSuffix
+	if err := os.WriteFile(backupPath, original, 0o644); err != nil {
+		return fmt.Errorf("writing backup %q: %w", backupPath, err)
+	}
+	updated, err := sjson.SetBytes(original, "theme", theme)
+	if err != nil {
+		return fmt.Errorf("setting tui theme: %w", err)
+	}
+	if err := os.WriteFile(tuiPath, updated, 0o644); err != nil {
+		return fmt.Errorf("writing %q: %w", tuiPath, err)
+	}
+	written, rerr := os.ReadFile(tuiPath)
+	if rerr != nil || !gjson.ValidBytes(written) {
+		if restoreErr := os.WriteFile(tuiPath, original, 0o644); restoreErr != nil {
+			return fmt.Errorf("tui.json failed validation and restore failed: %w", restoreErr)
+		}
+		return fmt.Errorf("written %q failed JSON validation; restored original", tuiPath)
+	}
+	return nil
+}
+
+// CaldenTUIPlugins are the OpenCode TUI plugins the suite installs for a richer
+// sidebar: sub-agent activity and a task/plan panel. They are community plugins
+// that OpenCode fetches (via Bun) from npm at start and caches under
+// ~/.cache/opencode/node_modules (require OpenCode 1.18+). Versions are pinned
+// for reproducibility and to skip the npm "latest" lookup on a cold cache. The
+// features themselves (subagents, todos) are native — these only add the panels.
+var CaldenTUIPlugins = []string{
+	"opencode-agents-monitor@0.1.2", // sub-agents in the sidebar
+	"opencode-todo@0.0.3",           // task / plan backlog panel
+}
+
+// pluginBase strips a trailing "@version" so two entries for the same package
+// (at different versions) are treated as one. A leading '@' (npm scope) is kept.
+func pluginBase(s string) string {
+	if i := strings.LastIndexByte(s, '@'); i > 0 {
+		return s[:i]
+	}
+	return s
+}
+
+// RemoveTUIPlugins removes the given plugins (matched by base name, ignoring
+// version) from the "plugin" array of the tui.json at tuiPath, preserving every
+// other entry. A missing file or empty array is a no-op. It returns how many
+// entries were removed. Backup + revalidate, restoring on failure.
+func RemoveTUIPlugins(tuiPath string, plugins []string) (int, error) {
+	original, err := os.ReadFile(tuiPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("reading %q: %w", tuiPath, err)
+	}
+	if !gjson.ValidBytes(original) {
+		return 0, fmt.Errorf("%q is not valid JSON", tuiPath)
+	}
+	drop := map[string]bool{}
+	for _, p := range plugins {
+		drop[pluginBase(p)] = true
+	}
+	var kept []string
+	removed := 0
+	gjson.GetBytes(original, "plugin").ForEach(func(_, v gjson.Result) bool {
+		s := v.String()
+		if drop[pluginBase(s)] {
+			removed++
+		} else {
+			kept = append(kept, s)
+		}
+		return true
+	})
+	if removed == 0 {
+		return 0, nil
+	}
+
+	backupPath := tuiPath + tuiBackupSuffix
+	if err := os.WriteFile(backupPath, original, 0o644); err != nil {
+		return 0, fmt.Errorf("writing backup %q: %w", backupPath, err)
+	}
+	updated, err := sjson.SetBytes(original, "plugin", kept)
+	if err != nil {
+		return 0, fmt.Errorf("setting tui plugins: %w", err)
+	}
+	if err := os.WriteFile(tuiPath, updated, 0o644); err != nil {
+		return 0, fmt.Errorf("writing %q: %w", tuiPath, err)
+	}
+	written, err := os.ReadFile(tuiPath)
+	if err != nil || !gjson.ValidBytes(written) {
+		if restoreErr := os.WriteFile(tuiPath, original, 0o644); restoreErr != nil {
+			return 0, fmt.Errorf("tui.json failed validation and restore failed: %w", restoreErr)
+		}
+		return 0, fmt.Errorf("written %q failed JSON validation; restored original", tuiPath)
+	}
+	return removed, nil
+}
+
+// ConfigureTUIPlugins merges plugins into the "plugin" array of the tui.json at
+// tuiPath, preserving every existing entry (never clobbering) and adding only
+// the packages not already present (matched by base name, ignoring version). It
+// creates the file if missing, backs it up, and revalidates the result,
+// restoring on failure. It returns the entries actually added.
+func ConfigureTUIPlugins(tuiPath string, plugins []string) ([]string, error) {
+	var original []byte
+	if b, err := os.ReadFile(tuiPath); err == nil {
+		original = b
+	} else if os.IsNotExist(err) {
+		original = []byte(`{"$schema":"https://opencode.ai/tui.json"}`)
+	} else {
+		return nil, fmt.Errorf("reading %q: %w", tuiPath, err)
+	}
+	if !gjson.ValidBytes(original) {
+		return nil, fmt.Errorf("%q is not valid JSON", tuiPath)
+	}
+
+	// Collect existing plugin entries and their base names.
+	var merged []string
+	haveBase := map[string]bool{}
+	gjson.GetBytes(original, "plugin").ForEach(func(_, v gjson.Result) bool {
+		s := v.String()
+		merged = append(merged, s)
+		haveBase[pluginBase(s)] = true
+		return true
+	})
+
+	var added []string
+	for _, p := range plugins {
+		if haveBase[pluginBase(p)] {
+			continue // same package already present (any version) — leave it
+		}
+		merged = append(merged, p)
+		haveBase[pluginBase(p)] = true
+		added = append(added, p)
+	}
+	if len(added) == 0 {
+		return nil, nil // nothing to do; leave the file untouched
+	}
+
+	backupPath := tuiPath + tuiBackupSuffix
+	if err := os.WriteFile(backupPath, original, 0o644); err != nil {
+		return nil, fmt.Errorf("writing backup %q: %w", backupPath, err)
+	}
+	updated, err := sjson.SetBytes(original, "plugin", merged)
+	if err != nil {
+		return nil, fmt.Errorf("setting tui plugins: %w", err)
+	}
+	if err := os.WriteFile(tuiPath, updated, 0o644); err != nil {
+		return nil, fmt.Errorf("writing %q: %w", tuiPath, err)
+	}
+	written, err := os.ReadFile(tuiPath)
+	if err != nil || !gjson.ValidBytes(written) {
+		if restoreErr := os.WriteFile(tuiPath, original, 0o644); restoreErr != nil {
+			return nil, fmt.Errorf("tui.json failed validation and restore failed: %w", restoreErr)
+		}
+		return nil, fmt.Errorf("written %q failed JSON validation; restored original", tuiPath)
+	}
+	return added, nil
+}

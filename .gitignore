@@ -1,0 +1,58 @@
+# Binaries
+/caldensec
+/calden-models
+*.exe
+*.test
+*.out
+
+# Go
+/vendor/
+go.work
+go.work.sum
+
+# GoReleaser build output
+/dist/
+
+# OS
+.DS_Store
+
+# Python build junk (never embed it with the skills pack: see skills_embed.go)
+__pycache__/
+*.pyc
+
+# wrangler local state/cache (Cloudflare Pages deploy)
+.wrangler/
+
+# Local backups (e.g. the skills-pack regeneration backup tarballs)
+bkp/
+
+# Local tooling caches
+.atl/
+
+# Local backups written by the surgical writers (opencode.json, tui.json, …)
+opencode.json.bak-*
+*.bak-calden*
+
+# AI development scaffolding (kept local, not published)
+CLAUDE.md
+AGENTS.md
+odd/
+
+# Local-only distributor helper + notes (never published)
+/reseal.sh
+/DISTRIBUTING.md
+
+# Generated sandbox-edition artifacts (per-machine; opencode-config holds the
+# unsealed gateway URL + baked config — never commit)
+Dockerfile.sandbox
+compose.sandbox.yaml
+caldensec-entrypoint.sh
+SANDBOX.md
+opencode-config/
+sandbox-work/
+.dockerignore
+/reseal-template.sh
+/reseal-templates/
+
+# CodeGraph index (local)
+/.codegraph/
