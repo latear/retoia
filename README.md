@@ -21,10 +21,22 @@ clear** (no sealing/passphrase), reduced to a **single provider**, and a
   `opencode.json`.
 - **Principal agent** — seeds one `primary` agent named `retoia` in
   `opencode.json`, pointed at the gateway provider and a default model.
-- **MCP servers** — Engram (persistent memory) and Context7 (up-to-date library
-  docs), both optional.
+- **MCP servers** — a curated catalog wired into `opencode.json` via
+  `retoia mcp add <id>`: Engram (persistent memory), Context7 (library docs),
+  **GitHub** (`ghcr.io/github/github-mcp-server` via Docker; needs
+  `$GITHUB_PERSONAL_ACCESS_TOKEN`), and **Cloudflare** (keyless remote docs MCP
+  at `https://docs.mcp.cloudflare.com/mcp`).
+- **Impeccable design skill** — optional install step (on by default) that runs
+  `npx skills add pbakaus/impeccable` so the agent gets the Impeccable frontend
+  design skill. Requires Node/`npx`; skipped with a note if it is missing.
 - **Self-update** — `retoia update` pulls signed releases from
   `https://cli.retoia.app` (override with `$RETOIA_UPDATE_BASE`).
+
+## Sandbox
+
+`retoia sandbox` scaffolds a plain **Debian**-based, Docker-isolated OpenCode
+container (no Kali, no pentest tooling), so an agent can run with your host
+config untouched.
 
 ## Platforms
 
@@ -68,10 +80,10 @@ never touch your real `~/.config/opencode/opencode.json`.
 
 ## What remains / TODO for the owner
 
-- **Release repo.** The Go module is `github.com/retoia/retoia-cli` and the
-  release/download references use the placeholder `latear/retoia`
-  (`install.sh`, `.goreleaser.yaml`, the Cloudflare worker, the update server).
-  Set these to the real GitHub repo once it exists.
+- **Create the release repo.** The Go module is `github.com/latear/retoia` and
+  the release/download references point at `latear/retoia` (`install.sh`,
+  `.goreleaser.yaml`, the Cloudflare worker, the update server). Create that
+  GitHub repo and publish releases so `install.sh` and `retoia update` resolve.
 - **Deploy the update host.** `deploy/cloudflare/` serves `cli.retoia.app`
   (`/retoia/manifest.json` + `/retoia/dl/<asset>`), key-gated against the
   gateway. Set `GITHUB_TOKEN` and `LITELLM_URL` (= the gateway) as secrets.
