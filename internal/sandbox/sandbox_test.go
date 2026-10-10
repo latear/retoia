@@ -16,7 +16,7 @@ func TestWriteGeneratesArtifacts(t *testing.T) {
 
 	// Core artifacts must exist on disk with sensible content.
 	want := map[string]string{
-		"Dockerfile.sandbox":   "kalilinux/kali-rolling",
+		"Dockerfile.sandbox":   "FROM debian:stable-slim",
 		"compose.sandbox.yaml": "RETOIA_API_KEY",
 		"retoia-entrypoint.sh": "RETOIA_API_KEY",
 		"SANDBOX.md":           "sandbox edition",
@@ -41,6 +41,16 @@ func TestWriteGeneratesArtifacts(t *testing.T) {
 	}
 	if strings.Contains(string(df), "go build") {
 		t.Error("Dockerfile.sandbox must not build from source (repo-less)")
+	}
+
+	// Generic isolated OpenCode sandbox: no Kali base, pentest tooling or Tor.
+	for name, content := range Files() {
+		low := strings.ToLower(content)
+		for _, banned := range []string{"kali", "nmap", "tor ", "torsocks", "proxychains", "iptables", "retoia_tor", "retoia_with_tor", "pentest"} {
+			if strings.Contains(low, banned) {
+				t.Errorf("%s still mentions %q", name, banned)
+			}
+		}
 	}
 
 	// The entrypoint script is executable.

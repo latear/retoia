@@ -34,7 +34,7 @@ type SetupPlan struct {
 func DockerSetupPlan() SetupPlan {
 	switch runtime.GOOS {
 	case "darwin":
-		// Start Colima with enough memory for the Kali image build; the 2 GB
+		// Start Colima with enough memory for the sandbox image build; the 2 GB
 		// default OOM-kills it (exit 137).
 		const colimaStart = "colima start --cpus 4 --memory 6"
 		if _, err := exec.LookPath("brew"); err == nil {

@@ -9,13 +9,13 @@ import (
 
 func TestSandboxExtras(t *testing.T) {
 	m := sandboxExtrasModel{ex: defaultSandboxExtras()}
-	if !(m.ex.tor && m.ex.engram && m.ex.context7 && m.ex.plugins) {
+	if !(m.ex.engram && m.ex.context7 && m.ex.plugins) {
 		t.Fatal("defaults should all be on")
 	}
-	// space toggles the cursor row (0 = Tor)
+	// space toggles the cursor row (0 = Engram)
 	um, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(" ")})
-	if um.(sandboxExtrasModel).ex.tor {
-		t.Error("space should toggle Tor off")
+	if um.(sandboxExtrasModel).ex.engram {
+		t.Error("space should toggle Engram off")
 	}
 	// enter on a toggle flips it (does not finish); navigate down to the Continue
 	// row and enter there finishes without cancel.
@@ -38,7 +38,7 @@ func TestSandboxExtras(t *testing.T) {
 	// view shows the rows + banner
 	vm, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
 	v := vm.(sandboxExtrasModel).View()
-	for _, want := range []string{"Tor", "Engram", "Context7", "Continue", bannerFragment} {
+	for _, want := range []string{"Engram", "Context7", "Continue", bannerFragment} {
 		if !strings.Contains(v, want) {
 			t.Errorf("extras view missing %q", want)
 		}

@@ -10,17 +10,16 @@ import (
 // sandboxExtras are the opt-in pieces of the sandbox image/config the user picks
 // before the build. All default on.
 type sandboxExtras struct {
-	tor      bool // install tor/torsocks/proxychains4 + run the daemon
 	engram   bool // the persistent-memory MCP
 	context7 bool // the library-docs MCP
 	plugins  bool // the OpenCode sidebar plugins
 }
 
 func defaultSandboxExtras() sandboxExtras {
-	return sandboxExtras{tor: true, engram: true, context7: true, plugins: true}
+	return sandboxExtras{engram: true, context7: true, plugins: true}
 }
 
-const sandboxExtrasCount = 4
+const sandboxExtrasCount = 3
 
 // sandboxExtrasModel is the toggle page shown before a sandbox build.
 type sandboxExtrasModel struct {
@@ -36,12 +35,10 @@ func (m sandboxExtrasModel) Init() tea.Cmd { return nil }
 func (m *sandboxExtrasModel) toggle(i int) {
 	switch i {
 	case 0:
-		m.ex.tor = !m.ex.tor
-	case 1:
 		m.ex.engram = !m.ex.engram
-	case 2:
+	case 1:
 		m.ex.context7 = !m.ex.context7
-	case 3:
+	case 2:
 		m.ex.plugins = !m.ex.plugins
 	}
 }
@@ -53,7 +50,6 @@ type extrasRow struct {
 
 func (m sandboxExtrasModel) rows() []extrasRow {
 	return []extrasRow{
-		{"Tor", "torsocks / proxychains4 — anonymized egress", m.ex.tor},
 		{"Engram", "persistent-memory MCP", m.ex.engram},
 		{"Context7", "live library/API docs MCP", m.ex.context7},
 		{"Sidebar plugins", "sub-agent monitor + task panel", m.ex.plugins},

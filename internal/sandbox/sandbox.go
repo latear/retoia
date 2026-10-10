@@ -1,6 +1,6 @@
 // Package sandbox generates the artifacts for the Reto IA "sandbox edition":
-// a single Docker container (Kali base, so pentest tools are available and
-// installable) with OpenCode + the Retoia suite installed INSIDE it, so the
+// a single Docker container (Debian base; the agent can install whatever tools
+// it needs) with OpenCode + the Retoia suite installed INSIDE it, so the
 // host's OpenCode is never touched. retoia is built from the repo source in a
 // Go stage; the config is baked at container start by `retoia install --yes`,
 // which reads the gateway URL / key from the environment.
@@ -77,13 +77,13 @@ const dockerfile = `# Reto IA sandbox edition — a single isolated container, b
 # never baked into an image layer.
 #
 #   docker build -f Dockerfile.sandbox -t retoia-sandbox .
-FROM kalilinux/kali-rolling
+FROM debian:stable-slim
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates curl git nodejs npm python3 python3-pip nmap \
+        ca-certificates curl git nodejs npm python3 python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-# uv, for uvx-based MCP servers (e.g. the kali MCP client).
+# uv, for uvx-based MCP servers.
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
 
@@ -101,16 +101,6 @@ RUN bash -c 'set -u; \
     tag="$(curl -fsSL --connect-timeout 15 --max-time 60 https://api.github.com/repos/Gentleman-Programming/engram/releases/latest | grep -o "\"tag_name\": *\"[^\"]*\"" | head -1 | sed -E "s/.*\"([^\"]*)\"$/\1/")"; \
     curl -fsSL --connect-timeout 15 --max-time 180 "https://github.com/Gentleman-Programming/engram/releases/download/${tag}/engram_${tag#v}_linux_${a}.tar.gz" | tar xz -C /usr/local/bin engram; \
     engram --version' || echo "engram: optional install skipped"
-
-# Tor (torsocks / proxychains4 / iptables) — optional, chosen in the installer.
-# Placed late (and behind an ARG) so toggling it does not rebust the expensive
-# base/OpenCode/Engram layers. When off, the entrypoint skips the Tor daemon too.
-ARG RETOIA_WITH_TOR=1
-RUN if [ "$RETOIA_WITH_TOR" = "1" ]; then \
-        apt-get update && apt-get install -y --no-install-recommends \
-            tor torsocks proxychains4 iptables \
-        && rm -rf /var/lib/apt/lists/*; \
-    else echo "retoia: Tor not requested — skipping tor/torsocks/proxychains4"; fi
 
 # Baked Retoia config, generated on the host (no retoia binary needed here).
 COPY opencode-config/ /root/.config/opencode/
@@ -143,7 +133,6 @@ services:
       dockerfile: Dockerfile.sandbox
       args:
         RETOIA_VERSION: "${RETOIA_VERSION:-dev}"
-        RETOIA_WITH_TOR: "${RETOIA_WITH_TOR:-1}"
     image: retoia-sandbox
     stdin_open: true
     tty: true
@@ -152,11 +141,6 @@ services:
     stop_grace_period: 3s
     environment:
       RETOIA_API_KEY: "${RETOIA_API_KEY:-}"
-      # Set to 1 to force ALL public egress + DNS through Tor (see SANDBOX.md).
-      RETOIA_TOR: "${RETOIA_TOR:-}"
-    cap_add:
-      - NET_RAW
-      - NET_ADMIN
     volumes:
       - ./sandbox-work:/work
 `
@@ -176,53 +160,6 @@ if [ -n "${RETOIA_API_KEY:-}" ]; then
   chmod 600 "$HOME/.local/share/opencode/auth.json"
 fi
 
-# Tor. The daemon always runs so 'torsocks <tool>' / 'proxychains4 <tool>' work
-# per command (SocksPort 9050). With RETOIA_TOR=1 it also installs a
-# transparent proxy: every public TCP connection and all DNS egress go through
-# Tor, while loopback and private/LAN ranges stay direct so in-scope internal
-# targets remain reachable. Tor is TCP-only, so SYN/UDP/raw scans (nmap -sS/-sU)
-# will not work while it is enforced — use 'nmap -sT -Pn'. All best effort: a
-# failure here must never kill the container, so it runs under 'set +e'. Skipped
-# entirely when Tor was not installed in the image (the installer's Tor toggle).
-if command -v tor >/dev/null 2>&1; then
-(
-  set +e
-  install -d -o debian-tor -g debian-tor /var/lib/tor 2>/dev/null
-  cat > /etc/tor/torrc.retoia <<'TORRC'
-User debian-tor
-DataDirectory /var/lib/tor
-SocksPort 9050
-TransPort 9040
-DNSPort 5353
-TORRC
-  tor -f /etc/tor/torrc.retoia >/var/log/tor-retoia.log 2>&1 &
-  tor_up=0
-  for _ in $(seq 1 30); do
-    (exec 3<>/dev/tcp/127.0.0.1/9050) 2>/dev/null && { exec 3>&-; tor_up=1; break; }
-    sleep 1
-  done
-
-  if [ "$tor_up" != "1" ]; then
-    echo "[retoia] Tor failed to start (see /var/log/tor-retoia.log); egress stays DIRECT (not anonymized)."
-  elif [ "${RETOIA_TOR:-}" = "1" ] || [ "${RETOIA_TOR:-}" = "true" ]; then
-    TOR_UID="$(id -u debian-tor)"
-    iptables -t nat -A OUTPUT -m owner --uid-owner "$TOR_UID" -j RETURN
-    iptables -t nat -A OUTPUT -o lo -j RETURN
-    iptables -t nat -A OUTPUT -p udp --dport 53 -j REDIRECT --to-ports 5353
-    iptables -t nat -A OUTPUT -p tcp --dport 53 -j REDIRECT --to-ports 5353
-    for net in 127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16; do
-      iptables -t nat -A OUTPUT -d "$net" -j RETURN
-    done
-    iptables -t nat -A OUTPUT -p tcp --syn -j REDIRECT --to-ports 9040
-    echo "[retoia] Tor transparent proxy ON: public TCP + DNS via Tor, private/LAN direct (nmap: use -sT -Pn)."
-  else
-    echo "[retoia] Tor daemon up (SocksPort 9050). Per command: torsocks <tool> / proxychains4 <tool>. Set RETOIA_TOR=1 to force ALL public egress via Tor."
-  fi
-) || echo "[retoia] Tor setup failed; continuing without it."
-else
-  echo "[retoia] Tor not installed in this image (disabled at build); egress is direct."
-fi
-
 exec sleep infinity
 `
 
@@ -237,27 +174,25 @@ sandbox-work
 
 const readme = `# Reto IA — sandbox edition
 
-Everything runs inside one container (Kali base), so your host OpenCode and its
-config are never touched. Pentest tools are available via apt and the agent can
-install more, just like a Kali box.
+Everything runs inside one container (Debian base), so your host OpenCode and its
+config are never touched. The agent can install whatever tools it needs inside
+the container with apt.
 
 This runs the SAME Retoia suite as the Local edition - same agents, same
-cybersecurity skills pack, same per-agent model templates - just
-isolated and ephemeral: OpenCode is pinned to 1.18.34 (Local tracks latest)
-and everything dies with the container except the /work bind mount. Tor is
-optional (see below).
+skills, same per-agent model templates - just isolated and ephemeral:
+OpenCode is pinned to 1.18.34 (Local tracks latest) and everything dies with
+the container except the /work bind mount.
 
 Built from PUBLIC pieces only — you do NOT need the retoia repo. Your retoia
 binary generates the Retoia config on the host; the image bakes it in on top of
-the official OpenCode installer and the kalilinux/kali-rolling base.
+the official OpenCode installer and the debian:stable-slim base.
 
 ## Onboarding (process 0)
 
-Opening the sandbox lands on Retoia-Orchestrator. When there is no engagement
+Opening the sandbox lands on Retoia-Orchestrator. When there is no task
 file yet, it runs the intake itself, in the same session - no agent switch:
-attack type, then the concrete goal, then scope. Once that is set, it
-orchestrates bounded by it and stops when the goal is met. Engagement file:
-/work/engagement.yaml. Full guide: docs/onboarding.md (in the retoia repo).
+the concrete goal, then scope. Once that is set, it orchestrates bounded by it
+and stops when the goal is met. Task file: /work/engagement.yaml. Full guide: docs/onboarding.md (in the retoia repo).
 
 ## Build & run
 
@@ -269,25 +204,6 @@ Colima on macOS). To do it by hand from this directory:
 
 The gateway key is written into the container at start from RETOIA_API_KEY, so
 it is never stored in an image layer. Your work dir is mounted at ./sandbox-work.
-
-## Tor (OPSEC for authorized recon)
-
-The container ships tor, torsocks and proxychains4. The Tor daemon runs on start
-(SocksPort 9050), so you can route any single command:
-
-    torsocks nmap -sT -Pn <target>       # Tor is TCP-only: connect scans only
-    proxychains4 curl https://ifconfig.me
-
-To force ALL public egress (and DNS) through Tor, start the container with
-RETOIA_TOR=1:
-
-    RETOIA_API_KEY='<key>' RETOIA_TOR=1 docker compose -f compose.sandbox.yaml up -d --build
-
-Loopback and private/LAN ranges (10/8, 172.16/12, 192.168/16, 169.254/16) stay
-DIRECT, so in-scope internal targets remain reachable and Tor is not asked to
-route addresses it cannot reach. Caveats: Tor is TCP-only (no -sS/-sU/raw scans;
-use "nmap -sT -Pn"), exit nodes are often slow or blocked, and .onion needs
-torsocks per command. Needs the NET_ADMIN capability (already in the compose).
 
 ## Teardown
 

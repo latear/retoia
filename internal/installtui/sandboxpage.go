@@ -11,12 +11,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tidwall/gjson"
 
-	"github.com/retoia/retoia-cli/internal/config"
-	"github.com/retoia/retoia-cli/internal/installer"
-	"github.com/retoia/retoia-cli/internal/keystore"
-	"github.com/retoia/retoia-cli/internal/mcpservers"
-	"github.com/retoia/retoia-cli/internal/onboard"
-	"github.com/retoia/retoia-cli/internal/sandbox"
+	"github.com/latear/retoia/internal/config"
+	"github.com/latear/retoia/internal/installer"
+	"github.com/latear/retoia/internal/keystore"
+	"github.com/latear/retoia/internal/mcpservers"
+	"github.com/latear/retoia/internal/onboard"
+	"github.com/latear/retoia/internal/sandbox"
 )
 
 // mcpRuntimes are the launchers available inside the sandbox container, so a
@@ -292,27 +292,15 @@ func restoreTerminal() { fmt.Print("\x1b[?1049l\x1b[?25h\x1b[0m") }
 
 // rebuildSandboxChild runs `retoia sandbox rebuild` as a fresh child process,
 // so the build runs with a clean terminal (no Bubble Tea residue) — the same
-// no-TUI path that renders reliably when run on its own. withTor controls the
-// Tor build-arg the child passes to the image build.
-func rebuildSandboxChild(dir string, withTor bool) error {
+// no-TUI path that renders reliably when run on its own.
+func rebuildSandboxChild(dir string) error {
 	exe, err := os.Executable()
 	if err != nil || exe == "" {
 		exe = "retoia"
 	}
 	cmd := exec.Command(exe, "sandbox", "rebuild", "--dir", dir)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	// Install Tor (build arg) and enable its transparent proxy at runtime
-	// (RETOIA_TOR) together, so "Tor on" means egress is actually anonymized.
-	cmd.Env = append(os.Environ(), "RETOIA_WITH_TOR="+torArg(withTor), "RETOIA_TOR="+torArg(withTor))
 	return cmd.Run()
-}
-
-// torArg maps the Tor toggle to the RETOIA_WITH_TOR build-arg value.
-func torArg(on bool) string {
-	if on {
-		return "1"
-	}
-	return "0"
 }
 
 // attachSandbox enters the running sandbox's OpenCode (forced pty so the TUI
@@ -354,7 +342,7 @@ func runSandbox(hostConfig, base string) error {
 		case "open":
 			return attachSandbox(cwd)
 		case "rebuild":
-			// Pick extras (Tor + MCPs + plugins), then ask for the gateway key —
+			// Pick extras (MCPs + plugins), then ask for the gateway key —
 			// same as a fresh install — re-stage, and rebuild. (Keyring calls are
 			// time-bounded now, so these full-screen pages no longer hang over SSH.)
 			ex, exCancelled, eerr := runSandboxExtras()
@@ -392,14 +380,14 @@ func runSandbox(hostConfig, base string) error {
 				fmt.Println("No gateway configured — rebuilding with the existing config (agents may lack valid models).")
 			}
 			// Rebuild in a fresh child process (plain output renders everywhere).
-			return rebuildSandboxChild(cwd, ex.tor)
+			return rebuildSandboxChild(cwd)
 		default: // cancel / empty
 			fmt.Println("Cancelled — the existing sandbox is untouched.")
 			return nil
 		}
 	}
 
-	// 0a. Extras: Tor + which MCPs/plugins go into the image.
+	// 0a. Extras: which MCPs/plugins go into the image.
 	ex, exCancelled, eerr := runSandboxExtras()
 	if eerr != nil {
 		return eerr
@@ -463,7 +451,7 @@ func runSandbox(hostConfig, base string) error {
 		fmt.Println(w)
 	}
 
-	// Warn if the Docker VM is small — the Kali build OOM-kills (exit 137) on the
+	// Warn if the Docker VM is small — the image build OOM-kills (exit 137) on the
 	// 2 GB Colima default.
 	if mem := sandbox.DockerMemGB(); mem > 0 && mem < 4 {
 		fmt.Printf("\nWARNING: the Docker VM has only %.1f GB — the build may be OOM-killed (exit 137).\n", mem)
@@ -472,14 +460,11 @@ func runSandbox(hostConfig, base string) error {
 
 	// Docker is ready: build & start the container, streaming the (long) output.
 	name, args := sandbox.UpCommand()
-	fmt.Println("\nBuilding and starting the sandbox (first build pulls Kali + installs OpenCode; a few minutes)…")
+	fmt.Println("\nBuilding and starting the sandbox (first build pulls Debian + installs OpenCode; a few minutes)…")
 	cmd := exec.Command(name, args...)
 	cmd.Dir = cwd
-	// Tor on ⇒ install it (build arg) AND route all public egress through it at
-	// runtime (RETOIA_TOR, read by the entrypoint and passed by the compose).
 	cmd.Env = append(os.Environ(),
-		"RETOIA_API_KEY="+serverKey, "RETOIA_VERSION="+Version,
-		"RETOIA_WITH_TOR="+torArg(ex.tor), "RETOIA_TOR="+torArg(ex.tor))
+		"RETOIA_API_KEY="+serverKey, "RETOIA_VERSION="+Version)
 	cmd.Env = append(cmd.Env, sandbox.BuildEnv()...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
