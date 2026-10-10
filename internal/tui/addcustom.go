@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/retoia/retoia-cli/internal/config"
+	"github.com/latear/retoia/internal/config"
 )
 
 // AddProviderOption is one selectable provider in the "add custom" flow. A

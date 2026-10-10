@@ -24,11 +24,11 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/retoia/retoia-cli/internal/config"
-	"github.com/retoia/retoia-cli/internal/installer"
-	"github.com/retoia/retoia-cli/internal/keystore"
-	"github.com/retoia/retoia-cli/internal/mcpservers"
-	"github.com/retoia/retoia-cli/internal/onboard"
+	"github.com/latear/retoia/internal/config"
+	"github.com/latear/retoia/internal/installer"
+	"github.com/latear/retoia/internal/keystore"
+	"github.com/latear/retoia/internal/mcpservers"
+	"github.com/latear/retoia/internal/onboard"
 )
 
 // The install wizard's palette and box/screen renderers live in theme.go.

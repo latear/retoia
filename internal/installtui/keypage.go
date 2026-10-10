@@ -8,9 +8,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/retoia/retoia-cli/internal/config"
-	"github.com/retoia/retoia-cli/internal/gateway"
-	"github.com/retoia/retoia-cli/internal/keystore"
+	"github.com/latear/retoia/internal/config"
+	"github.com/latear/retoia/internal/gateway"
+	"github.com/latear/retoia/internal/keystore"
 )
 
 // gatewayAccount is the keystore account under which the validated server key

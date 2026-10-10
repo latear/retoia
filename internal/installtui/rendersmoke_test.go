@@ -5,7 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/retoia/retoia-cli/internal/config"
+	"github.com/latear/retoia/internal/config"
 )
 
 // TestRenderNoPanicAcrossSizes renders the banner/scroll-affected screens at many

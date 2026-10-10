@@ -37,7 +37,7 @@ clear** (no sealing/passphrase), reduced to a **single provider**, and a
 
 ```bash
 # macOS / Linux / WSL
-curl -fsSL https://raw.githubusercontent.com/TBD_OWNER/TBD_REPO/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/latear/retoia/main/install.sh | bash
 ```
 
 The script downloads the release binary for your OS/arch, puts `retoia` on your
@@ -69,15 +69,12 @@ never touch your real `~/.config/opencode/opencode.json`.
 ## What remains / TODO for the owner
 
 - **Release repo.** The Go module is `github.com/retoia/retoia-cli` and the
-  release/download references use the placeholder `TBD_OWNER/TBD_REPO`
+  release/download references use the placeholder `latear/retoia`
   (`install.sh`, `.goreleaser.yaml`, the Cloudflare worker, the update server).
   Set these to the real GitHub repo once it exists.
 - **Deploy the update host.** `deploy/cloudflare/` serves `cli.retoia.app`
   (`/retoia/manifest.json` + `/retoia/dl/<asset>`), key-gated against the
   gateway. Set `GITHUB_TOKEN` and `LITELLM_URL` (= the gateway) as secrets.
-- **The sandbox edition.** `internal/sandbox/` still generates a Kali-flavored
-  Docker sandbox. Decide whether Reto IA keeps a plain Docker-isolated OpenCode
-  sandbox or drops it.
 
 ## License
 

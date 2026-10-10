@@ -9,7 +9,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
-	"github.com/retoia/retoia-cli/internal/config"
+	"github.com/latear/retoia/internal/config"
 )
 
 // providerBackupSuffix names the backup taken before writing a provider block.

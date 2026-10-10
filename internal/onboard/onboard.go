@@ -18,10 +18,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/retoia/retoia-cli/internal/config"
-	"github.com/retoia/retoia-cli/internal/gateway"
-	"github.com/retoia/retoia-cli/internal/keystore"
-	"github.com/retoia/retoia-cli/internal/tui"
+	"github.com/latear/retoia/internal/config"
+	"github.com/latear/retoia/internal/gateway"
+	"github.com/latear/retoia/internal/keystore"
+	"github.com/latear/retoia/internal/tui"
 )
 
 // Small local palette for the gate's own bordered "card", matching the

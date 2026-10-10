@@ -22,7 +22,7 @@ source (`LITELLM_URL` and/or `UPDATE_KEYS`); it refuses to run open.
 | Env | Default | Purpose |
 |-----|---------|---------|
 | `ADDR` | `:8099` | listen address |
-| `GITHUB_REPO` | `TBD_OWNER/TBD_REPO` | owner/repo of the releases |
+| `GITHUB_REPO` | `latear/retoia` | owner/repo of the releases |
 | `GITHUB_TOKEN` | — (required) | token with read access to the private repo |
 | `PUBLIC_BASE` | `https://`+Host | external base URL used in asset links |
 | `LITELLM_URL` | — | validate keys via `GET {LITELLM_URL}/v1/models` |

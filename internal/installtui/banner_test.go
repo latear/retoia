@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/retoia/retoia-cli/internal/tui"
+	"github.com/latear/retoia/internal/tui"
 )
 
 func TestBanner(t *testing.T) {

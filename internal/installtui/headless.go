@@ -5,10 +5,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/retoia/retoia-cli/internal/config"
-	"github.com/retoia/retoia-cli/internal/gateway"
-	"github.com/retoia/retoia-cli/internal/keystore"
-	"github.com/retoia/retoia-cli/internal/onboard"
+	"github.com/latear/retoia/internal/config"
+	"github.com/latear/retoia/internal/gateway"
+	"github.com/latear/retoia/internal/keystore"
+	"github.com/latear/retoia/internal/onboard"
 )
 
 // HeadlessOptions configures a non-interactive install.

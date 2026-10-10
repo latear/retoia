@@ -8,7 +8,7 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	"github.com/retoia/retoia-cli/internal/config"
+	"github.com/latear/retoia/internal/config"
 )
 
 // TestApplyInstallFreshConfig covers a clean machine where opencode.json does

@@ -16,7 +16,7 @@
 // Dependency-free (standard library only). Configure via environment:
 //
 //	ADDR         listen address (default ":8099")
-//	GITHUB_REPO  owner/repo of the releases (default "TBD_OWNER/TBD_REPO")
+//	GITHUB_REPO  owner/repo of the releases (default "latear/retoia")
 //	GITHUB_TOKEN token with read access to the private repo (required)
 //	PUBLIC_BASE  external base URL for asset links (default "https://"+Host)
 //	LITELLM_URL  validate keys via GET {LITELLM_URL}/v1/models (optional)
@@ -67,7 +67,7 @@ type server struct {
 func newServer() (*server, error) {
 	s := &server{
 		addr:       envOr("ADDR", ":8099"),
-		repo:       envOr("GITHUB_REPO", "TBD_OWNER/TBD_REPO"),
+		repo:       envOr("GITHUB_REPO", "latear/retoia"),
 		token:      os.Getenv("GITHUB_TOKEN"),
 		publicBase: strings.TrimRight(os.Getenv("PUBLIC_BASE"), "/"),
 		litellmURL: strings.TrimRight(os.Getenv("LITELLM_URL"), "/"),

@@ -15,7 +15,7 @@
 //   GITHUB_TOKEN (secret, required)  read access to the private repo
 //   UPDATE_KEYS  (secret, optional)  comma-separated allowlist of accepted keys
 //   LITELLM_URL  (var, optional)     validate keys via GET {LITELLM_URL}/v1/models
-//   GITHUB_REPO  (var)               owner/repo (default TBD_OWNER/TBD_REPO)
+//   GITHUB_REPO  (var)               owner/repo (default latear/retoia)
 //   PUBLIC_BASE  (var)               external base for asset links (default: request origin)
 //   HOME_URL     (var)               where unauthenticated/root visitors are sent
 
@@ -90,7 +90,7 @@ function ghHeaders(env) {
 }
 
 async function latestRelease(env) {
-	const repo = env.GITHUB_REPO || "TBD_OWNER/TBD_REPO";
+	const repo = env.GITHUB_REPO || "latear/retoia";
 	const r = await fetch(`${GH}/repos/${repo}/releases/latest`, {
 		headers: ghHeaders(env),
 	});

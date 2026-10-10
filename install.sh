@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Instalador de retoia. Por defecto DESCARGA el binario prearmado del último
-# release de GitHub (no requiere Go): el pack de skills viaja dentro del binario.
+# release de GitHub (no requiere Go): las skills se descargan por separado, no viajan dentro del binario.
 # Lo deja en ~/.local/bin y abre el instalador interactivo (retoia install).
 #
 # Uso:
@@ -13,12 +13,12 @@
 #   - O exportá GH_TOKEN / GITHUB_TOKEN con un token que pueda leer el release.
 #
 # Una línea (con gh ya autenticado):
-#   curl -fsSL https://raw.githubusercontent.com/TBD_OWNER/TBD_REPO/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/latear/retoia/main/install.sh | bash
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-REPO="TBD_OWNER/TBD_REPO"
+REPO="latear/retoia"
 BIN="retoia"
 DEST_DIR="$HOME/.local/bin"
 DEST="$DEST_DIR/$BIN"

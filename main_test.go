@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/retoia/retoia-cli/internal/config"
+	"github.com/latear/retoia/internal/config"
 	"github.com/tidwall/gjson"
 )
 

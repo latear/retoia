@@ -1,4 +1,4 @@
-module github.com/retoia/retoia-cli
+module github.com/latear/retoia
 
 go 1.26.4
 

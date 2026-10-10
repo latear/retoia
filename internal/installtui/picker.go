@@ -8,8 +8,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/retoia/retoia-cli/internal/config"
-	"github.com/retoia/retoia-cli/internal/tui"
+	"github.com/latear/retoia/internal/config"
+	"github.com/latear/retoia/internal/tui"
 )
 
 // pickerStep identifies which of the two lists (category, then model) is shown.

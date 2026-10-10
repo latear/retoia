@@ -21,17 +21,17 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	"github.com/retoia/retoia-cli/internal/config"
-	"github.com/retoia/retoia-cli/internal/gateway"
-	"github.com/retoia/retoia-cli/internal/installer"
-	"github.com/retoia/retoia-cli/internal/installtui"
-	"github.com/retoia/retoia-cli/internal/keystore"
-	"github.com/retoia/retoia-cli/internal/mcpservers"
-	"github.com/retoia/retoia-cli/internal/onboard"
-	"github.com/retoia/retoia-cli/internal/providers"
-	"github.com/retoia/retoia-cli/internal/sandbox"
-	"github.com/retoia/retoia-cli/internal/tui"
-	"github.com/retoia/retoia-cli/internal/updater"
+	"github.com/latear/retoia/internal/config"
+	"github.com/latear/retoia/internal/gateway"
+	"github.com/latear/retoia/internal/installer"
+	"github.com/latear/retoia/internal/installtui"
+	"github.com/latear/retoia/internal/keystore"
+	"github.com/latear/retoia/internal/mcpservers"
+	"github.com/latear/retoia/internal/onboard"
+	"github.com/latear/retoia/internal/providers"
+	"github.com/latear/retoia/internal/sandbox"
+	"github.com/latear/retoia/internal/tui"
+	"github.com/latear/retoia/internal/updater"
 )
 
 // version is the build version, set by GoReleaser via -ldflags "-X main.version=...".
@@ -672,7 +672,7 @@ func okMark(ok bool) string {
 	return "missing"
 }
 
-// cmdSandbox scaffolds the sandbox edition: a single Docker container (Kali
+// cmdSandbox scaffolds the sandbox edition: a single Docker container (Debian
 // base) with OpenCode + the Retoia suite installed inside, so the host OpenCode
 // is never touched. It writes the artifacts (Dockerfile, compose, entrypoint)
 // into the target dir and prints the build/run steps; the docker build itself is

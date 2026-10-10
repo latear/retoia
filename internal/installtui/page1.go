@@ -10,7 +10,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/retoia/retoia-cli/internal/installer"
+	"github.com/latear/retoia/internal/installer"
 )
 
 // setupRow identifies one actionable row on page 1. rowOpenCode is present only

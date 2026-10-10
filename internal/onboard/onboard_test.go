@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/retoia/retoia-cli/internal/keystore"
+	"github.com/latear/retoia/internal/keystore"
 )
 
 // TestResolveBase covers the plaintext precedence: an explicit flag wins, then
