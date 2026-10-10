@@ -112,7 +112,7 @@ type applyResult struct {
 
 	baseURL    string // gateway base URL written into the provider block
 	baseURLSet bool   // provider.<id>.options.baseURL was set
-	noGateway  bool   // no gateway configured (unlock skipped / none): reminder shown
+	noGateway  bool   // no gateway configured: reminder shown
 
 	credentialSet        bool   // the server key was written into OpenCode's auth store
 	credentialProvider   string // provider id the credential was written under
@@ -142,26 +142,8 @@ type applyResult struct {
 // configPath (provider providerID) and the gateway at base. It returns nil on
 // a clean cancel, printing cancelledMessage; no files are written before the
 // apply step, so a cancel is always a true no-op.
-func Run(configPath, providerID, base string, unlock func(string) (string, error)) error {
-	// STEP 0 — unlock. Shown only when the gateway URL is sealed and no
-	// passphrase came from the environment: ask for it here (masked) and decrypt
-	// the gateway base URL. Runs before the edition choice so both editions have
-	// the gateway; an empty submit continues without one.
-	passphrase := os.Getenv("RETOIA_UNLOCK") // may be set for a non-interactive unlock
-	if base == "" && unlock != nil {
-		um, err := runUnlockPage(unlock)
-		if err != nil {
-			return err
-		}
-		if um.cancel {
-			fmt.Println(cancelledMessage)
-			return nil
-		}
-		base = um.base
-		passphrase = um.pass
-	}
-
-	// STEP 0a — edition. Local installs into this host's OpenCode; Sandbox builds
+func Run(configPath, providerID, base string) error {
+	// STEP 0 — edition. Local installs into this host's OpenCode; Sandbox builds
 	// an isolated Docker container (repo-less) and never touches the host.
 	em, err := runEditionPage()
 	if err != nil {
@@ -172,7 +154,7 @@ func Run(configPath, providerID, base string, unlock func(string) (string, error
 		return nil
 	}
 	if em.choice == editionSandbox {
-		return runSandbox(configPath, base, passphrase)
+		return runSandbox(configPath, base)
 	}
 
 	// PAGE 1 — extras. Engram and Context7 default on; sidebar plugins default
@@ -186,8 +168,7 @@ func Run(configPath, providerID, base string, unlock func(string) (string, error
 		return nil
 	}
 
-	// PAGE 2 — server key. Skipped entirely when there is no gateway (the unlock
-	// step was skipped, or none is configured): the install proceeds offline so
+	// PAGE 2 — server key. Skipped entirely when there is no gateway: the install proceeds offline so
 	// the extras still get installed, with a reminder at the end.
 	var key keyResult
 	if base == "" {
@@ -219,7 +200,7 @@ func Run(configPath, providerID, base string, unlock func(string) (string, error
 	}
 
 	// APPLY — the first point that touches any file.
-	result, err := apply(configPath, providerID, base, passphrase, setup, key)
+	result, err := apply(configPath, providerID, base, setup, key)
 	if err != nil {
 		return err
 	}
@@ -232,7 +213,7 @@ func Run(configPath, providerID, base string, unlock func(string) (string, error
 // into OpenCode's credential store, ensures PATH, and optionally configures
 // Engram, Context7 and the TUI sidebar plugins, recording everything it did
 // into an applyResult for the final screen. It performs no TUI rendering.
-func apply(configPath, providerID, base, passphrase string, setup setupResult, key keyResult) (applyResult, error) {
+func apply(configPath, providerID, base string, setup setupResult, key keyResult) (applyResult, error) {
 	res := applyResult{
 		configPath:           configPath,
 		openCodePresent:      setup.openCodePresent,
@@ -253,8 +234,8 @@ func apply(configPath, providerID, base, passphrase string, setup setupResult, k
 	// Register the gateway provider — only when there is a gateway. When the key
 	// validated, write its base URL AND the authorized models, so OpenCode knows
 	// the model ids to route (a fresh config has no provider block). With no
-	// validated models, at least set the base URL. With no gateway at all (unlock
-	// skipped / none configured), skip the provider entirely and flag a reminder.
+	// validated models, at least set the base URL. With no gateway at all (none
+	// configured), skip the provider entirely and flag a reminder.
 	switch {
 	case base == "":
 		res.noGateway = true
@@ -383,18 +364,8 @@ func apply(configPath, providerID, base, passphrase string, setup setupResult, k
 		}
 	}
 
-	// Update endpoint: unseal it with the install passphrase (available now) and
-	// store it, so `retoia update` later needs no passphrase. Best effort.
-	if ub, uerr := onboard.UnsealUpdateBase(passphrase); uerr == nil && ub != "" {
-		_ = keystore.Set(updateBaseAccount, ub)
-	}
-
 	return res, nil
 }
-
-// updateBaseAccount is the keystore account holding the unsealed update endpoint
-// URL (mirrors main.updateBaseAccount).
-const updateBaseAccount = "update-base"
 
 // resolveShellRC returns the shell rc file to edit: ~/.zshrc when it exists as a
 // regular file, otherwise ~/.bashrc (which EnsurePATH creates if missing).

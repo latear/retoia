@@ -24,7 +24,7 @@ func TestApplyInstallFreshConfig(t *testing.T) {
 	setup := setupResult{}                                             // no extras
 	key := keyResult{models: []config.Model{{ID: "model-a", Name: "Orca"}, {ID: "cloud-b", Name: "GLM"}}}
 
-	res, err := apply(cfg, "retoia", "https://gateway.example/v1", "", setup, key)
+	res, err := apply(cfg, "retoia", "https://gateway.example/v1", setup, key)
 	if err != nil {
 		t.Fatalf("apply on a fresh machine: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestApplyInstallEndToEnd(t *testing.T) {
 	setup := setupResult{installEngram: true, installContext7: true}
 	key := keyResult{keepCurrent: true}
 
-	res, err := apply(cfg, "retoia", base, "", setup, key)
+	res, err := apply(cfg, "retoia", base, setup, key)
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}

@@ -27,13 +27,6 @@ func TestPreview(t *testing.T) {
 		fmt.Printf("\n=== %s ===\n%s\n", title, body)
 	}
 
-	// STEP 0 — unlock the sealed gateway (masked passphrase).
-	{
-		um := newUnlockModel(func(string) (string, error) { return "", nil })
-		um.width = w
-		frame("STEP 0 · unlock the gateway", um.View())
-	}
-
 	// PAGE 1 — OpenCode missing (install row shown).
 	{
 		m := setupModel{openCodePresent: false, installEngram: true, installContext7: true, width: w}

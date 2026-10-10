@@ -1,11 +1,16 @@
-// Package providers is a small registry of well-known, OpenAI-compatible model
-// providers that `retoia models` can add as custom OpenCode providers. Each
-// exposes an OpenAI-style `GET {BaseURL}/models` endpoint behind a Bearer key,
-// so the same fetch (internal/gateway.FetchModels) works for all of them.
+// Package providers is the registry of the model provider that `retoia models`
+// can add as a custom OpenCode provider. It exposes an OpenAI-style
+// `GET {BaseURL}/models` endpoint behind a Bearer key, so the shared fetch
+// (internal/gateway.FetchModels) works against it.
 //
-// Base URLs are sensible defaults; the install/add flow lets the user edit the
-// base before fetching, so an out-of-date default is recoverable.
+// Reto IA ships a single provider: the Reto IA gateway. The base URL is a
+// sensible default; the install/add flow lets the user edit the base before
+// fetching, so an out-of-date default is recoverable.
 package providers
+
+// DefaultGatewayBase is the Reto IA gateway, the OpenAI-compatible endpoint the
+// server key validates against and that serves the authorized models.
+const DefaultGatewayBase = "https://llm.retoia.app"
 
 // Provider is one known model provider.
 type Provider struct {
@@ -14,18 +19,10 @@ type Provider struct {
 	BaseURL string // OpenAI-compatible base; models come from BaseURL + "/models"
 }
 
-// known lists the built-in OpenAI-compatible providers, in display order. The
-// first four use endpoints confirmed by the maintainer; the rest are common
-// defaults (all editable in the add-custom flow).
+// known lists the built-in provider: the Reto IA gateway. The base URL is
+// editable in the add-custom flow, so an out-of-date default is recoverable.
 var known = []Provider{
-	{ID: "zai", Name: "z.ai / GLM", BaseURL: "https://api.z.ai/api/coding/paas/v4"},
-	{ID: "moonshot", Name: "Kimi (Moonshot)", BaseURL: "https://api.kimi.com/coding/v1"},
-	{ID: "orcarouter", Name: "OrcaRouter", BaseURL: "https://api.orcarouter.ai/v1"},
-	{ID: "minimax", Name: "MiniMax", BaseURL: "https://api.minimax.io/v1"},
-	{ID: "openai", Name: "OpenAI", BaseURL: "https://api.openai.com/v1"},
-	{ID: "openrouter", Name: "OpenRouter", BaseURL: "https://openrouter.ai/api/v1"},
-	{ID: "deepseek", Name: "DeepSeek", BaseURL: "https://api.deepseek.com/v1"},
-	{ID: "xai", Name: "xAI (Grok)", BaseURL: "https://api.x.ai/v1"},
+	{ID: "retoia", Name: "Reto IA", BaseURL: DefaultGatewayBase},
 }
 
 // Known returns the built-in providers in display order.

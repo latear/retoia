@@ -133,8 +133,8 @@ func (c *Config) AvailableModels() []Model {
 
 // ProviderBaseURL returns provider.<providerID>.options.baseURL, or "" when it
 // is not set. This is the gateway URL OpenCode itself uses to route, written at
-// install time; the models command reads it back so it needs no passphrase
-// once the sealed URL has already been unlocked during install.
+// install time; the models command reads it back when no flag or env override
+// is given.
 func (c *Config) ProviderBaseURL() string {
 	path := fmt.Sprintf("provider.%s.options.baseURL", c.ProviderID)
 	return gjson.GetBytes(c.raw, path).String()

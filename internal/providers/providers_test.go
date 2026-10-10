@@ -26,20 +26,21 @@ func TestKnownIsWellFormed(t *testing.T) {
 		}
 		seen[p.ID] = true
 	}
-	// The providers the user named must be present.
-	for _, id := range []string{"zai", "moonshot", "orcarouter", "minimax", "openai"} {
-		if !seen[id] {
-			t.Errorf("expected known provider %q", id)
-		}
+	// Reto IA ships a single provider: the gateway.
+	if !seen["retoia"] {
+		t.Errorf("expected known provider %q", "retoia")
+	}
+	if len(known) != 1 {
+		t.Errorf("expected exactly one provider, got %d: %+v", len(known), known)
 	}
 }
 
 func TestLookup(t *testing.T) {
-	p, ok := Lookup("openrouter")
+	p, ok := Lookup("retoia")
 	if !ok {
-		t.Fatal("Lookup(openrouter) not found")
+		t.Fatal("Lookup(retoia) not found")
 	}
-	if p.ID != "openrouter" || !strings.Contains(p.BaseURL, "openrouter") {
+	if p.ID != "retoia" || p.BaseURL != DefaultGatewayBase {
 		t.Errorf("unexpected provider: %+v", p)
 	}
 	if _, ok := Lookup("nope"); ok {

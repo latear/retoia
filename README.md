@@ -82,12 +82,11 @@ never touch your real `~/.config/opencode/opencode.json`.
   "Reto IA config MCP" toggle, and the "kali-full MCP" toggle are gone from
   page 1 (now just Engram / Context7 / sidebar-plugins toggles + the server
   key page). If anything there still prints stale wording, it's cosmetic.
-- **`retoia seal-template`** (dev/distribution tooling for sealing a
-  recommended agent→model template into `internal/onboard/sealed.go`) still
-  exists and still compiles — it no longer special-cases "Retoia"/"cs-"
-  prefixed names (that filter was removed since there's no fixed roster
-  anymore), but it's distribution tooling for the original project and may
-  not be meaningful for retoia; left in place rather than guessed at.
+- **Gateway sealing was removed**: the gateway URL is now plaintext. It
+  defaults to `https://llm.retoia.app` (override with `--gateway` or
+  `$RETOIA_BASE`); the update endpoint defaults to `https://cli.retoia.app`
+  (override with `$RETOIA_UPDATE_BASE`). There is no passphrase or unlock step
+  and the `seal*` subcommands are gone.
 - **`internal/config.go`'s "managed agent" convention** still special-cases
   names prefixed `Retoia`/`cs-` (`isRetoiaAgentName`) when deciding which
   `.agent.*` entries in `opencode.json` count as "managed" by this tool, in

@@ -25,7 +25,7 @@ type HeadlessOptions struct {
 // PATH and (optionally) Engram/Context7/TUI plugins, writing a short summary to
 // out. It is the entry point used by `retoia install --yes` and by the
 // sandbox image, where no TTY is available.
-func RunHeadless(out io.Writer, configPath, providerID, base, passphrase string, opts HeadlessOptions) error {
+func RunHeadless(out io.Writer, configPath, providerID, base string, opts HeadlessOptions) error {
 	serverKey := onboard.ResolveServerKey(os.Getenv("RETOIA_API_KEY"), keystore.Get)
 	var models []config.Model
 	if serverKey != "" && base != "" {
@@ -44,7 +44,7 @@ func RunHeadless(out io.Writer, configPath, providerID, base, passphrase string,
 		keepCurrent: serverKey != "",
 		offline:     serverKey == "" || len(models) == 0,
 	}
-	res, err := apply(configPath, providerID, base, passphrase, setup, key)
+	res, err := apply(configPath, providerID, base, setup, key)
 	if err != nil {
 		return err
 	}

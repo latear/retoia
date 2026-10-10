@@ -329,7 +329,7 @@ func attachSandbox(dir string) error {
 // then — in the TUI — ensures Docker is available (Colima on macOS) and builds &
 // starts the container. No retoia repo or release is needed: the image is
 // assembled from public pieces plus the baked config.
-func runSandbox(hostConfig, base, passphrase string) error {
+func runSandbox(hostConfig, base string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -380,7 +380,7 @@ func runSandbox(hostConfig, base, passphrase string) error {
 				}
 				serverKey := onboard.ResolveServerKey(os.Getenv("RETOIA_API_KEY"), keystore.Get)
 				fmt.Println("Refreshing the sandbox config against the gateway…")
-				if serr := stageSandboxConfig(cfgDir, hostConfig, base, passphrase, serverKey, ex); serr != nil {
+				if serr := stageSandboxConfig(cfgDir, hostConfig, base, serverKey, ex); serr != nil {
 					return fmt.Errorf("refreshing the sandbox config: %w", serr)
 				}
 				if stagedModelCount(cfgDir) == 0 {
@@ -389,7 +389,7 @@ func runSandbox(hostConfig, base, passphrase string) error {
 				}
 			} else {
 				restoreTerminal()
-				fmt.Println("No gateway unlocked — rebuilding with the existing config (agents may lack valid models).")
+				fmt.Println("No gateway configured — rebuilding with the existing config (agents may lack valid models).")
 			}
 			// Rebuild in a fresh child process (plain output renders everywhere).
 			return rebuildSandboxChild(cwd, ex.tor)
@@ -433,7 +433,7 @@ func runSandbox(hostConfig, base, passphrase string) error {
 
 	// 1. Generate the Retoia config on the host, into ./opencode-config (the
 	// image bakes it). The container has no retoia binary, so no config MCP.
-	if err := stageSandboxConfig(cfgDir, hostConfig, base, passphrase, serverKey, ex); err != nil {
+	if err := stageSandboxConfig(cfgDir, hostConfig, base, serverKey, ex); err != nil {
 		return fmt.Errorf("generating the sandbox config: %w", err)
 	}
 
@@ -495,7 +495,7 @@ func runSandbox(hostConfig, base, passphrase string) error {
 // + tui.json) into cfgDir, by running the headless install against a throwaway
 // HOME and copying the produced config dir out. The gateway credential is NOT
 // included (the container writes it at start from the environment).
-func stageSandboxConfig(cfgDir, hostConfig, base, passphrase, serverKey string, ex sandboxExtras) error {
+func stageSandboxConfig(cfgDir, hostConfig, base, serverKey string, ex sandboxExtras) error {
 	stageHome, err := os.MkdirTemp("", "retoia-sandbox-stage-")
 	if err != nil {
 		return err
@@ -522,7 +522,7 @@ func stageSandboxConfig(cfgDir, hostConfig, base, passphrase, serverKey string, 
 	if err := os.MkdirAll(filepath.Dir(stageCfg), 0o755); err != nil {
 		return err
 	}
-	if err := RunHeadless(io.Discard, stageCfg, "retoia", base, passphrase,
+	if err := RunHeadless(io.Discard, stageCfg, "retoia", base,
 		HeadlessOptions{TUIPlugins: ex.plugins}); err != nil {
 		return err
 	}

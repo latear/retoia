@@ -168,9 +168,6 @@ post_install() {
 }
 
 launch_tui() {
-  # La passphrase de instalación se pide dentro de la TUI (paso 0). Si preferís
-  # no interactivo, exportá RETOIA_UNLOCK antes de correr esto y la TUI se
-  # saltea el paso 0.
   echo
   echo "Lanzando el instalador interactivo (retoia install) ..."
   if command -v "$BIN" >/dev/null 2>&1; then "$BIN" install; else "$DEST" install; fi

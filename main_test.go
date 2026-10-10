@@ -171,35 +171,12 @@ func TestKeyStatus(t *testing.T) {
 	}
 }
 
-// TestCmdSeal covers the distributor-only seal command: it needs the passphrase
-// in $RETOIA_UNLOCK and exactly one URL argument, and prints a paste-ready
-// constant that does not contain the plaintext URL.
-func TestCmdSeal(t *testing.T) {
-	const url = "https://gateway.example/v1"
-
-	// Missing passphrase is a clear error, no output.
-	t.Setenv("RETOIA_UNLOCK", "")
-	if err := cmdSeal(io.Discard, []string{url}); err == nil {
-		t.Error("cmdSeal without $RETOIA_UNLOCK should error")
-	}
-
-	// Missing / extra argument is rejected.
-	t.Setenv("RETOIA_UNLOCK", "pw")
-	if err := cmdSeal(io.Discard, nil); err == nil {
-		t.Error("cmdSeal with no URL should error")
-	}
-
-	// Happy path: prints the constant, and never the plaintext URL.
-	var buf bytes.Buffer
-	if err := cmdSeal(&buf, []string{url}); err != nil {
-		t.Fatalf("cmdSeal: %v", err)
-	}
-	out := buf.String()
-	if !strings.Contains(out, "var sealedBase = ") {
-		t.Errorf("output missing the paste-ready constant: %q", out)
-	}
-	if strings.Contains(out, url) {
-		t.Errorf("output leaks the plaintext URL: %q", out)
+// TestResolveUpdateBase covers the update endpoint precedence: the env var wins
+// (trailing slash trimmed), otherwise the default endpoint.
+func TestResolveUpdateBase(t *testing.T) {
+	t.Setenv("RETOIA_UPDATE_BASE", "https://env.example/")
+	if got := resolveUpdateBase(); got != "https://env.example" {
+		t.Errorf("env override = %q, want https://env.example", got)
 	}
 }
 

@@ -10,8 +10,6 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -34,7 +32,6 @@ import (
 	"github.com/retoia/retoia-cli/internal/sandbox"
 	"github.com/retoia/retoia-cli/internal/tui"
 	"github.com/retoia/retoia-cli/internal/updater"
-	"github.com/retoia/retoia-cli/internal/urlseal"
 )
 
 // version is the build version, set by GoReleaser via -ldflags "-X main.version=...".
@@ -63,9 +60,6 @@ Commands:
   key        Show or reset the stored gateway server key
   update     Update retoia to the latest signed release via the gateway
   version    Print the retoia version
-  seal       Seal a gateway URL for distribution (needs $RETOIA_UNLOCK)
-  seal-update  Seal the update endpoint URL for distribution (needs $RETOIA_UNLOCK)
-  seal-template  Seal the current agent→model assignment as the install template
 
 Run 'retoia <command> --help' for a command's flags.
 `
@@ -108,12 +102,6 @@ func runCLI(out io.Writer, args []string) error {
 	case "version", "--version", "-v":
 		fmt.Fprintln(out, version+" — \x1b[38;5;33m♥\x1b[0m by fico")
 		return nil
-	case "seal":
-		return cmdSeal(os.Stdout, args[1:])
-	case "seal-update":
-		return cmdSealUpdate(os.Stdout, args[1:])
-	case "seal-template":
-		return cmdSealTemplate(os.Stdout, args[1:])
 	default:
 		return fmt.Errorf("unknown command %q (run 'retoia help')", args[0])
 	}
@@ -133,7 +121,7 @@ func cmdInstall(args []string) error {
 	fs := flag.NewFlagSet("install", flag.ContinueOnError)
 	configPath := fs.String("config", defaultPath, "path to opencode.json")
 	providerID := fs.String("provider", "retoia", "OpenCode provider id managed by this tool")
-	gatewayFlag := fs.String("gateway", "", "override the Reto IA gateway base URL (default: $RETOIA_BASE, else the sealed gateway opened with $RETOIA_UNLOCK)")
+	gatewayFlag := fs.String("gateway", "", "override the Reto IA gateway base URL (default: $RETOIA_BASE, else https://llm.retoia.app)")
 	yes := fs.Bool("yes", false, "non-interactive install (no TUI): apply with defaults; used by automation and the sandbox image")
 	engram := fs.Bool("engram", true, "with --yes: install and configure the Engram MCP")
 	context7 := fs.Bool("context7", true, "with --yes: wire the context7 docs MCP")
@@ -141,31 +129,11 @@ func cmdInstall(args []string) error {
 		return err
 	}
 
-	// Resolve the gateway base URL. When it is sealed and no passphrase came
-	// from the environment, defer the unlock to step 0 inside the TUI instead of
-	// failing here: pass an empty base and onboard.UnsealBase as the unlocker.
-	base, err := onboard.ResolveBase(*gatewayFlag, os.Getenv("RETOIA_BASE"))
-	var unlock func(string) (string, error)
-	switch {
-	case err == nil:
-		// base already known (flag, $RETOIA_BASE, or sealed + $RETOIA_UNLOCK)
-	case errors.Is(err, onboard.ErrLocked):
-		base, unlock = "", onboard.UnsealBase
-	default:
-		return err
-	}
+	base := onboard.ResolveBase(*gatewayFlag, os.Getenv("RETOIA_BASE"))
 
-	// Non-interactive path: there is no TTY to prompt on, so a still-locked
-	// gateway must be openable from the environment (or absent). The passphrase
-	// for the sealed agent templates comes from $RETOIA_UNLOCK.
+	// Non-interactive path: no TTY to prompt on.
 	if *yes {
-		passphrase := os.Getenv("RETOIA_UNLOCK")
-		if base == "" && passphrase != "" && onboard.Sealed() {
-			if b, uerr := onboard.UnsealBase(passphrase); uerr == nil {
-				base = b
-			}
-		}
-		if err := installtui.RunHeadless(os.Stdout, *configPath, *providerID, base, passphrase,
+		if err := installtui.RunHeadless(os.Stdout, *configPath, *providerID, base,
 			installtui.HeadlessOptions{Engram: *engram, Context7: *context7, TUIPlugins: true}); err != nil {
 			return err
 		}
@@ -173,7 +141,7 @@ func cmdInstall(args []string) error {
 		return nil
 	}
 
-	if err := installtui.Run(*configPath, *providerID, base, unlock); err != nil {
+	if err := installtui.Run(*configPath, *providerID, base); err != nil {
 		return err
 	}
 	notifyIfUpdate(os.Stdout, *configPath, *providerID)
@@ -181,13 +149,9 @@ func cmdInstall(args []string) error {
 }
 
 // notifyIfUpdate prints a one-line notice when a newer retoia release is
-// available. Best effort and silent on any failure (no update endpoint, offline,
-// or nothing newer), so it never disrupts an install.
+// available. Best effort and silent on any failure (offline or nothing newer), so it never disrupts an install.
 func notifyIfUpdate(out io.Writer, configPath, providerID string) {
-	base, err := resolveUpdateBase(configPath, providerID)
-	if err != nil {
-		return
-	}
+	base := resolveUpdateBase()
 	if v, newer := updater.CheckLatest(base, resolveGatewayKey(providerID, configPath), version); newer {
 		fmt.Fprintf(out, "\nA newer retoia is available: %s — run `retoia update`\n", v)
 	}
@@ -289,35 +253,6 @@ func cmdUninstall(args []string) error {
 	}
 	fmt.Println("Done. Custom providers you added were left untouched.")
 	return nil
-}
-
-// resolvePassphrase returns the install passphrase: $RETOIA_UNLOCK when set
-// (for automation/CI), otherwise it prompts on the terminal WITHOUT echoing, so
-// the passphrase never has to live in an environment variable or shell history.
-// The no-echo toggle is best-effort (Unix `stty`); if it is unavailable the read
-// still works, just echoed.
-func resolvePassphrase(prompt string) (string, error) {
-	if v := os.Getenv("RETOIA_UNLOCK"); v != "" {
-		return v, nil
-	}
-	fmt.Fprint(os.Stderr, prompt)
-	stty := func(arg string) {
-		c := exec.Command("stty", arg)
-		c.Stdin = os.Stdin
-		_ = c.Run()
-	}
-	stty("-echo")
-	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
-	stty("echo")
-	fmt.Fprintln(os.Stderr)
-	if err != nil && err != io.EOF {
-		return "", fmt.Errorf("reading passphrase: %w", err)
-	}
-	pass := strings.TrimSpace(line)
-	if pass == "" {
-		return "", fmt.Errorf("no passphrase provided")
-	}
-	return pass, nil
 }
 
 // confirm asks a yes/no question on stdin, defaulting to no.
@@ -770,7 +705,7 @@ func cmdSandbox(out io.Writer, args []string) error {
 // plain progress output — a terminal-agnostic path that avoids the install
 // wizard's full-screen handoff (which can render as a blank over some SSH
 // terminals). It refreshes the Docker scaffold in place and keeps the already
-// baked Retoia config (a full config refresh needs the install passphrase).
+// baked Retoia config (a full config refresh needs a re-install).
 func cmdSandboxRebuild(out io.Writer, args []string) error {
 	fs := flag.NewFlagSet("sandbox rebuild", flag.ContinueOnError)
 	dir := fs.String("dir", ".", "directory holding the sandbox artifacts")
@@ -916,7 +851,7 @@ func cmdSandboxModels(out io.Writer, args []string) error {
 
 	// Reuse the standard per-agent picker, pointed at the staged config. It reads
 	// the gateway baseURL already baked into that config and the key from the
-	// keystore/env, so no passphrase is needed.
+	// keystore/env.
 	if err := cmdModels([]string{"--config", cfg, "--provider", *providerID}); err != nil {
 		return err
 	}
@@ -1027,7 +962,7 @@ func cmdModels(args []string) error {
 	fs := flag.NewFlagSet("models", flag.ContinueOnError)
 	configPath := fs.String("config", defaultPath, "path to opencode.json")
 	providerID := fs.String("provider", "retoia", "OpenCode provider id managed by this tool")
-	gatewayFlag := fs.String("gateway", "", "override the Reto IA gateway base URL (default: $RETOIA_BASE, else the sealed gateway opened with $RETOIA_UNLOCK)")
+	gatewayFlag := fs.String("gateway", "", "override the Reto IA gateway base URL (default: $RETOIA_BASE, else https://llm.retoia.app)")
 	listOnly := fs.Bool("list", false, "print the managed agents and authorized models, then exit (needs a valid server key; no TUI, no changes)")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -1044,16 +979,16 @@ func cmdModels(args []string) error {
 	}
 
 	// Resolve the gateway base URL. Precedence: --gateway, $RETOIA_BASE, the
-	// sealed URL (via $RETOIA_UNLOCK), and finally the baseURL OpenCode
-	// already has in opencode.json — written at install once the sealed URL was
-	// unlocked — so daily use needs no passphrase.
-	// Resolve the gateway base URL (best effort). Precedence: --gateway,
-	// $RETOIA_BASE, the sealed URL, then opencode.json's provider baseURL. When
-	// none resolves, do NOT fail — fall through to the interactive menu, where the
-	// user can enter a key or add their own OpenAI-compatible provider/models.
-	base, berr := onboard.ResolveBase(*gatewayFlag, os.Getenv("RETOIA_BASE"))
-	if berr != nil {
-		base = cfg.ProviderBaseURL() // "" when there is no gateway configured at all
+	// baseURL OpenCode already has in opencode.json, then the default gateway.
+	base := *gatewayFlag
+	if base == "" {
+		base = os.Getenv("RETOIA_BASE")
+	}
+	if base == "" {
+		base = cfg.ProviderBaseURL()
+	}
+	if base == "" {
+		base = onboard.ResolveBase("", "")
 	}
 	key := onboard.ResolveServerKey(os.Getenv("RETOIA_API_KEY"), keystore.Get)
 
@@ -1193,44 +1128,23 @@ func cmdUpdate(out io.Writer, args []string) error {
 		return updateKeygen(out)
 	}
 
-	base, err := resolveUpdateBase(*configPath, *providerID)
-	if err != nil {
-		return err
-	}
 	return updater.Run(out, updater.Options{
-		Base:           base,
+		Base:           resolveUpdateBase(),
 		Key:            resolveGatewayKey(*providerID, *configPath),
 		CurrentVersion: version,
 	})
 }
 
-// resolveUpdateBase finds the update endpoint without a passphrase:
-// $RETOIA_UPDATE_BASE, then the URL stored at install (sealed update base,
-// unsealed into the keystore), then the gateway host from opencode.json.
-func resolveUpdateBase(configPath, providerID string) (string, error) {
+// resolveUpdateBase finds the update endpoint: $RETOIA_UPDATE_BASE, then the
+// URL stored in the keystore, then the default update endpoint.
+func resolveUpdateBase() string {
 	if v := strings.TrimRight(os.Getenv("RETOIA_UPDATE_BASE"), "/"); v != "" {
-		return v, nil
+		return v
 	}
 	if v, err := keystore.Get(updateBaseAccount); err == nil && v != "" {
-		return strings.TrimRight(v, "/"), nil
+		return strings.TrimRight(v, "/")
 	}
-	if b := providerBaseURL(configPath, providerID); b != "" {
-		if base, err := updater.BaseFromProvider(b); err == nil {
-			return base, nil
-		}
-	}
-	// Last resort: unseal the endpoint baked into the binary with the install
-	// passphrase, and remember it so a later update needs no passphrase. This
-	// covers a client whose install never stored the base (no gateway staged).
-	if pass := strings.TrimSpace(os.Getenv("RETOIA_UNLOCK")); pass != "" {
-		if ub, err := onboard.UnsealUpdateBase(pass); err == nil && ub != "" {
-			_ = keystore.Set(updateBaseAccount, ub)
-			return strings.TrimRight(ub, "/"), nil
-		}
-	}
-	return "", fmt.Errorf("could not locate the update endpoint: set $RETOIA_UPDATE_BASE=<url>, " +
-		"or $RETOIA_UNLOCK=<passphrase> to use the endpoint sealed into this binary, " +
-		"or configure the gateway in opencode.json")
+	return onboard.DefaultUpdateBase
 }
 
 // resolveGatewayKey finds the gateway key without prompting: $RETOIA_API_KEY,
@@ -1248,16 +1162,6 @@ func resolveGatewayKey(providerID, configPath string) string {
 		}
 	}
 	return ""
-}
-
-// providerBaseURL reads provider.<id>.options.baseURL from opencode.json; "" if
-// absent or unreadable.
-func providerBaseURL(configPath, providerID string) string {
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return ""
-	}
-	return gjson.GetBytes(data, "provider."+providerID+".options.baseURL").String()
 }
 
 // updateKeygen prints a fresh Ed25519 key pair for signing releases: the private
@@ -1340,136 +1244,9 @@ func cmdKey(args []string) error {
 	return nil
 }
 
-// cmdSeal implements `retoia seal <gateway-url>`: a distributor-only helper
-// that encrypts the gateway URL under the passphrase in $RETOIA_UNLOCK and
-// prints a ready-to-paste `var sealedBase = "..."` for internal/onboard/sealed.go.
-// The passphrase is then shared out-of-band with whoever may install.
-func cmdSeal(out io.Writer, args []string) error {
-	fs := flag.NewFlagSet("seal", flag.ContinueOnError)
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 {
-		return fmt.Errorf("usage: retoia seal <gateway-url>  (prompts for the passphrase, or set $RETOIA_UNLOCK)")
-	}
-
-	pass, err := resolvePassphrase("Passphrase to seal the gateway URL: ")
-	if err != nil {
-		return err
-	}
-
-	blob, err := urlseal.Seal(fs.Arg(0), pass)
-	if err != nil {
-		return fmt.Errorf("sealing URL: %w", err)
-	}
-
-	fmt.Fprintln(out, "Sealed. Paste this into internal/onboard/sealed.go, then rebuild:")
-	fmt.Fprintln(out)
-	fmt.Fprintf(out, "var sealedBase = %q\n", blob)
-	return nil
-}
-
-// updateBaseAccount is the keystore account holding the (unsealed) update
-// endpoint URL, written at install so `retoia update` needs no passphrase.
+// updateBaseAccount is the keystore account holding the update
+// endpoint URL, used by `retoia update` when set.
 const updateBaseAccount = "update-base"
-
-// cmdSealUpdate implements `retoia seal-update <url>`: seals the update
-// endpoint URL with the install passphrase and prints a ready-to-paste
-// `var sealedUpdateBase = "..."` for internal/onboard/sealed.go.
-func cmdSealUpdate(out io.Writer, args []string) error {
-	fs := flag.NewFlagSet("seal-update", flag.ContinueOnError)
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 {
-		return fmt.Errorf("usage: retoia seal-update <update-url>  (prompts for the passphrase, or set $RETOIA_UNLOCK)")
-	}
-	pass, err := resolvePassphrase("Passphrase to seal the update URL: ")
-	if err != nil {
-		return err
-	}
-	blob, err := urlseal.Seal(fs.Arg(0), pass)
-	if err != nil {
-		return fmt.Errorf("sealing URL: %w", err)
-	}
-	fmt.Fprintln(out, "Sealed. Paste this into internal/onboard/sealed.go, then rebuild:")
-	fmt.Fprintln(out)
-	fmt.Fprintf(out, "var sealedUpdateBase = %q\n", blob)
-	return nil
-}
-
-// cmdSealTemplate reads the current opencode.json, captures each managed
-// agent's assigned model, seals that agent→model map (with $RETOIA_UNLOCK),
-// and prints a ready-to-paste `var sealedTemplate = "..."`. On install, after
-// unlocking, agents get these models automatically — with the real names sealed,
-// never in the repo. Set up the agents the way you want (retoia models) first.
-func cmdSealTemplate(out io.Writer, args []string) error {
-	defaultPath, err := defaultConfigPath()
-	if err != nil {
-		return err
-	}
-	fs := flag.NewFlagSet("seal-template", flag.ContinueOnError)
-	configPath := fs.String("config", defaultPath, "path to opencode.json")
-	providerID := fs.String("provider", "retoia", "OpenCode provider id")
-	slot := fs.String("slot", "retoia", "which template slot to seal: retoia, cloud or both")
-	fromJSON := fs.String("from-json", "", `agent→model JSON to seal (e.g. '{"my-agent":"..."}'); default: read the current assignments`)
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	if *slot != "retoia" && *slot != "cloud" && *slot != "both" {
-		return fmt.Errorf("--slot must be retoia, cloud or both, got %q", *slot)
-	}
-	pass, err := resolvePassphrase("Reto IA install passphrase: ")
-	if err != nil {
-		return err
-	}
-
-	// The template map: from --from-json, or captured from the current config.
-	tmpl := map[string]string{}
-	if *fromJSON != "" {
-		if err := json.Unmarshal([]byte(*fromJSON), &tmpl); err != nil {
-			return fmt.Errorf("parsing --from-json: %w", err)
-		}
-	} else {
-		cfg, err := config.Load(*configPath, *providerID)
-		if err != nil {
-			return fmt.Errorf("loading config: %w", err)
-		}
-		for _, a := range cfg.ManagedAgents() {
-			if a.CurrentModel != "" {
-				tmpl[a.Name] = a.CurrentModel
-			}
-		}
-	}
-	if len(tmpl) == 0 {
-		return fmt.Errorf("no agent→model assignments (pass --from-json or assign models first with 'retoia models')")
-	}
-
-	raw, err := json.Marshal(tmpl)
-	if err != nil {
-		return fmt.Errorf("encoding template: %w", err)
-	}
-	blob, err := urlseal.Seal(string(raw), pass)
-	if err != nil {
-		return fmt.Errorf("sealing template: %w", err)
-	}
-
-	varName := "sealedAgentsRetoia"
-	switch *slot {
-	case "cloud":
-		varName = "sealedAgentsCloud"
-	case "both":
-		varName = "sealedAgentsBoth"
-	}
-	fmt.Fprintf(out, "Sealed %d assignments into the %s slot:\n", len(tmpl), *slot)
-	for name, m := range tmpl {
-		fmt.Fprintf(out, "  %-22s → %s\n", name, m)
-	}
-	fmt.Fprintln(out, "\nPaste this into internal/onboard/sealed.go, then rebuild:")
-	fmt.Fprintln(out)
-	fmt.Fprintf(out, "var %s = %q\n", varName, blob)
-	return nil
-}
 
 // keyStatus renders where the server key resolves from, given the environment
 // value and the stored value. The environment variable takes precedence over

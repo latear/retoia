@@ -98,7 +98,7 @@ func (m summaryModel) View() string {
 	case r.baseURLSet:
 		b.WriteString(bullet(true, "Gateway", r.baseURL+mutedStyle.Render(" set as the provider base URL")))
 	case r.noGateway:
-		b.WriteString(bullet(false, "Gateway", warnStyle.Render("skipped — no passphrase/key; extras installed without a gateway")))
+		b.WriteString(bullet(false, "Gateway", warnStyle.Render("skipped — no key; extras installed without a gateway")))
 	default:
 		b.WriteString(bullet(false, "Gateway", warnStyle.Render("base URL not set")))
 	}
@@ -156,7 +156,7 @@ func (m summaryModel) View() string {
 	if r.noGateway {
 		// No gateway yet: spell out exactly what is still pending.
 		b.WriteString("  " + warnStyle.Render("No gateway configured. Still pending:") + "\n")
-		b.WriteString(nextStep("set the gateway", "re-run install with the passphrase, or set RETOIA_BASE + a key"))
+		b.WriteString(nextStep("set the gateway", "re-run install, or set RETOIA_BASE + a key"))
 		b.WriteString(nextStep("assign models", "retoia models"))
 	}
 	b.WriteString(nextStep("retoia models", "assign a model to each configured agent"))

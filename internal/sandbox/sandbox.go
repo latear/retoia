@@ -3,7 +3,7 @@
 // installable) with OpenCode + the Retoia suite installed INSIDE it, so the
 // host's OpenCode is never touched. retoia is built from the repo source in a
 // Go stage; the config is baked at container start by `retoia install --yes`,
-// which reads the gateway passphrase / key from the environment.
+// which reads the gateway URL / key from the environment.
 //
 // The artifacts are a starting point meant to be reviewed and built on the
 // user's machine (this tool cannot run Docker); they are correct by construction
@@ -242,7 +242,7 @@ config are never touched. Pentest tools are available via apt and the agent can
 install more, just like a Kali box.
 
 This runs the SAME Retoia suite as the Local edition - same agents, same
-cybersecurity skills pack, same sealed per-agent model templates - just
+cybersecurity skills pack, same per-agent model templates - just
 isolated and ephemeral: OpenCode is pinned to 1.18.34 (Local tracks latest)
 and everything dies with the container except the /work bind mount. Tor is
 optional (see below).

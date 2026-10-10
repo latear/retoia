@@ -19,12 +19,11 @@ func TestRunHeadless(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("OPENCODE_AUTH_PATH", filepath.Join(home, "auth.json"))
 	t.Setenv("RETOIA_API_KEY", "")
-	t.Setenv("RETOIA_UNLOCK", "")
 
 	cfg := filepath.Join(home, "opencode.json") // does not exist yet
 
 	var buf bytes.Buffer
-	err := RunHeadless(&buf, cfg, "retoia", "", "", HeadlessOptions{Engram: false})
+	err := RunHeadless(&buf, cfg, "retoia", "", HeadlessOptions{Engram: false})
 	if err != nil {
 		t.Fatalf("RunHeadless: %v", err)
 	}
@@ -48,11 +47,10 @@ func TestRunHeadlessWiresContext7(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("OPENCODE_AUTH_PATH", filepath.Join(home, "auth.json"))
 	t.Setenv("RETOIA_API_KEY", "")
-	t.Setenv("RETOIA_UNLOCK", "")
 
 	cfg := filepath.Join(home, "opencode.json")
 	var buf bytes.Buffer
-	if err := RunHeadless(&buf, cfg, "retoia", "", "", HeadlessOptions{Context7: true}); err != nil {
+	if err := RunHeadless(&buf, cfg, "retoia", "", HeadlessOptions{Context7: true}); err != nil {
 		t.Fatalf("RunHeadless: %v", err)
 	}
 	data, _ := os.ReadFile(cfg)
@@ -69,11 +67,10 @@ func TestRunHeadlessNoGatewaySkipsProvider(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("OPENCODE_AUTH_PATH", filepath.Join(home, "auth.json"))
 	t.Setenv("RETOIA_API_KEY", "")
-	t.Setenv("RETOIA_UNLOCK", "")
 
 	cfg := filepath.Join(home, "opencode.json")
 	var buf bytes.Buffer
-	if err := RunHeadless(&buf, cfg, "retoia", "", "", HeadlessOptions{}); err != nil {
+	if err := RunHeadless(&buf, cfg, "retoia", "", HeadlessOptions{}); err != nil {
 		t.Fatalf("RunHeadless: %v", err)
 	}
 	data, _ := os.ReadFile(cfg)
@@ -90,10 +87,9 @@ func TestRunHeadlessNoGatewaySkipsProvider(t *testing.T) {
 // credential (auth.json), which the container writes at start from the env.
 func TestStageSandboxConfig(t *testing.T) {
 	t.Setenv("RETOIA_API_KEY", "")
-	t.Setenv("RETOIA_UNLOCK", "")
 	cfgDir := filepath.Join(t.TempDir(), "opencode-config")
 
-	if err := stageSandboxConfig(cfgDir, "", "", "", "", defaultSandboxExtras()); err != nil {
+	if err := stageSandboxConfig(cfgDir, "", "", "", defaultSandboxExtras()); err != nil {
 		t.Fatalf("stageSandboxConfig: %v", err)
 	}
 	data, err := os.ReadFile(filepath.Join(cfgDir, "opencode.json"))

@@ -10,10 +10,8 @@
 package onboard
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -24,7 +22,6 @@ import (
 	"github.com/retoia/retoia-cli/internal/gateway"
 	"github.com/retoia/retoia-cli/internal/keystore"
 	"github.com/retoia/retoia-cli/internal/tui"
-	"github.com/retoia/retoia-cli/internal/urlseal"
 )
 
 // Small local palette for the gate's own bordered "card", matching the
@@ -87,19 +84,13 @@ func gateCardContentWidth(termWidth int) int {
 // is remembered, and from which it is later read back.
 const gatewayAccount = "gateway"
 
-// unlockEnv holds the passphrase that opens the sealed gateway URL baked into
-// the build (see sealed.go). It is a shared secret the distributor hands to
-// whoever is allowed to install.
-const unlockEnv = "RETOIA_UNLOCK"
+// defaultGatewayBase is the Reto IA gateway used when neither --gateway nor
+// $RETOIA_BASE is set.
+const defaultGatewayBase = "https://llm.retoia.app"
 
-// ErrNoGateway is returned by ResolveBase when no gateway URL is configured at
-// all: no --gateway flag, no $RETOIA_BASE, and no sealed URL baked in.
-// ErrLocked is returned when a sealed URL is baked in but no passphrase was
-// provided in $RETOIA_UNLOCK to open it.
-var (
-	ErrNoGateway = errors.New("no gateway URL configured (pass --gateway or set $RETOIA_BASE)")
-	ErrLocked    = errors.New("gateway URL is sealed; set $RETOIA_UNLOCK with the install passphrase")
-)
+// DefaultUpdateBase is the release/download endpoint used by `retoia update`
+// when neither $RETOIA_UPDATE_BASE nor a stored update-base is set.
+const DefaultUpdateBase = "https://cli.retoia.app"
 
 // ErrCancelled is returned by Run when the user cancels the server-key gate
 // (Ctrl+C or Esc) before a key is validated. The caller treats this as a
@@ -119,90 +110,15 @@ func unreachableMessage(base string) string {
 }
 
 // ResolveBase returns the gateway base URL, applying precedence: the --gateway
-// flag wins, then $RETOIA_BASE, then the sealed URL baked into the build
-// (opened with the passphrase in $RETOIA_UNLOCK). It returns ErrNoGateway
-// when nothing is configured, ErrLocked when a sealed URL needs a passphrase
-// that was not provided, and wraps urlseal.ErrWrongPassphrase when the
-// passphrase is wrong.
-func ResolveBase(flagVal, envVal string) (string, error) {
+// flag wins, then $RETOIA_BASE, then the default gateway.
+func ResolveBase(flagVal, envVal string) string {
 	if flagVal != "" {
-		return flagVal, nil
+		return flagVal
 	}
 	if envVal != "" {
-		return envVal, nil
+		return envVal
 	}
-	return UnsealBase(os.Getenv(unlockEnv))
-}
-
-// Sealed reports whether a sealed gateway URL is baked into this build. When it
-// is, callers with no --gateway/$RETOIA_BASE must obtain a passphrase (from
-// $RETOIA_UNLOCK or an interactive prompt) and call UnsealBase.
-func Sealed() bool { return sealedBase != "" }
-
-// UnsealBase opens the baked-in sealed gateway URL with passphrase. It returns
-// ErrNoGateway when nothing is sealed, ErrLocked for an empty passphrase, and
-// wraps urlseal.ErrWrongPassphrase when the passphrase is wrong.
-func UnsealBase(passphrase string) (string, error) {
-	if sealedBase == "" {
-		return "", ErrNoGateway
-	}
-	if passphrase == "" {
-		return "", ErrLocked
-	}
-	url, err := urlseal.Open(sealedBase, passphrase)
-	if err != nil {
-		return "", fmt.Errorf("opening sealed gateway URL: %w", err)
-	}
-	return url, nil
-}
-
-// UnsealUpdateBase opens the baked-in sealed update endpoint URL with passphrase.
-// An empty slot (or empty passphrase) returns "" with no error — the update base
-// is optional (it falls back to $RETOIA_UPDATE_BASE, then the gateway host).
-func UnsealUpdateBase(passphrase string) (string, error) {
-	if sealedUpdateBase == "" || passphrase == "" {
-		return "", nil
-	}
-	url, err := urlseal.Open(sealedUpdateBase, passphrase)
-	if err != nil {
-		return "", fmt.Errorf("opening sealed update URL: %w", err)
-	}
-	return url, nil
-}
-
-// UnsealAgents opens the baked-in suggested agent→model templates (retoia,
-// cloud, and both — the combined full-access mix) with passphrase. Each is
-// (nil) when its slot is empty. It returns ErrLocked for an empty passphrase
-// when a slot is present, and wraps urlseal.ErrWrongPassphrase on a bad one.
-func UnsealAgents(passphrase string) (retoia, cloud, both map[string]string, err error) {
-	if retoia, err = unsealAgentSlot(sealedAgentsRetoia, passphrase); err != nil {
-		return nil, nil, nil, err
-	}
-	if cloud, err = unsealAgentSlot(sealedAgentsCloud, passphrase); err != nil {
-		return nil, nil, nil, err
-	}
-	if both, err = unsealAgentSlot(sealedAgentsBoth, passphrase); err != nil {
-		return nil, nil, nil, err
-	}
-	return retoia, cloud, both, nil
-}
-
-func unsealAgentSlot(blob, passphrase string) (map[string]string, error) {
-	if blob == "" {
-		return nil, nil
-	}
-	if passphrase == "" {
-		return nil, ErrLocked
-	}
-	raw, err := urlseal.Open(blob, passphrase)
-	if err != nil {
-		return nil, fmt.Errorf("opening sealed template: %w", err)
-	}
-	var m map[string]string
-	if err := json.Unmarshal([]byte(raw), &m); err != nil {
-		return nil, fmt.Errorf("parsing sealed template: %w", err)
-	}
-	return m, nil
+	return defaultGatewayBase
 }
 
 // ResolveServerKey returns the server key to use without prompting: the env
