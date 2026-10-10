@@ -46,7 +46,7 @@ odd/
 # unsealed gateway URL + baked config — never commit)
 Dockerfile.sandbox
 compose.sandbox.yaml
-caldensec-entrypoint.sh
+retoia-entrypoint.sh
 SANDBOX.md
 opencode-config/
 sandbox-work/

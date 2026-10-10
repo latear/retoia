@@ -1,21 +1,21 @@
-# GoReleaser config for caldensec.
-# Cross-compiles the dependency-free static binary (the skills pack ships inside
-# it via go:embed) and publishes per-platform archives + checksums to a GitHub
-# release on every pushed tag (see .github/workflows/release.yml).
+# GoReleaser config for retoia.
+# Cross-compiles the dependency-free static binary and publishes per-platform
+# archives + checksums to a GitHub release on every pushed tag (see
+# .github/workflows/release.yml).
 #
 # Local dry run (no publish):  goreleaser release --snapshot --clean
 version: 2
 
-project_name: caldensec
+project_name: retoia
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: caldensec
+  - id: retoia
     main: .
-    binary: caldensec
+    binary: retoia
     env:
       - CGO_ENABLED=0
     goos:
@@ -31,9 +31,9 @@ builds:
       - -X main.version={{ .Tag }}
 
 archives:
-  - id: caldensec
-    # install.sh predicts this exact name: caldensec_<os>_<arch>.tar.gz, with
-    # "darwin" shown as "mac". Contents are wrapped in a top-level "caldensec/"
+  - id: retoia
+    # install.sh predicts this exact name: retoia_<os>_<arch>.tar.gz, with
+    # "darwin" shown as "mac". Contents are wrapped in a top-level "retoia/"
     # folder so extracting never dumps files into the current directory.
     name_template: '{{ .ProjectName }}_{{ if eq .Os "darwin" }}mac{{ else }}{{ .Os }}{{ end }}_{{ .Arch }}'
     wrap_in_directory: "{{ .ProjectName }}"
@@ -52,8 +52,8 @@ snapshot:
 
 release:
   github:
-    owner: ficopix
-    name: caldensec
+    owner: latear
+    name: retoia
   draft: false
   prerelease: auto
 

@@ -13,12 +13,12 @@ import (
 
 // TestPreview renders each wizard page's View() with sample data to stdout so a
 // developer can eyeball the frames without a live gateway. It is a dev tool,
-// not an assertion: it is skipped unless CALDEN_PREVIEW is set.
+// not an assertion: it is skipped unless RETOIA_PREVIEW is set.
 //
-//	NO_COLOR=1 CALDEN_PREVIEW=1 go test ./internal/installtui/ -run Preview -v
+//	NO_COLOR=1 RETOIA_PREVIEW=1 go test ./internal/installtui/ -run Preview -v
 func TestPreview(t *testing.T) {
-	if os.Getenv("CALDEN_PREVIEW") == "" {
-		t.Skip("set CALDEN_PREVIEW=1 to render the install wizard frames")
+	if os.Getenv("RETOIA_PREVIEW") == "" {
+		t.Skip("set RETOIA_PREVIEW=1 to render the install wizard frames")
 	}
 
 	const w = 72
