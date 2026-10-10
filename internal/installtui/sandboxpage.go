@@ -426,7 +426,7 @@ func runSandbox(hostConfig, base string) error {
 	}
 
 	// 2. Scaffold the Docker artifacts next to it.
-	written, werr := sandbox.Write(cwd)
+	written, werr := sandbox.Write(cwd, ex.persist)
 	if werr != nil {
 		return fmt.Errorf("scaffolding sandbox: %w", werr)
 	}

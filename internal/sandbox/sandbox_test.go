@@ -9,7 +9,7 @@ import (
 
 func TestWriteGeneratesArtifacts(t *testing.T) {
 	dir := t.TempDir()
-	written, err := Write(dir)
+	written, err := Write(dir, true)
 	if err != nil {
 		t.Fatalf("Write: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestWriteGeneratesArtifacts(t *testing.T) {
 	}
 
 	// Generic isolated OpenCode sandbox: no Kali base, pentest tooling or Tor.
-	for name, content := range Files() {
+	for name, content := range Files(true) {
 		low := strings.ToLower(content)
 		for _, banned := range []string{"kali", "nmap", "tor ", "torsocks", "proxychains", "iptables", "retoia_tor", "retoia_with_tor", "pentest"} {
 			if strings.Contains(low, banned) {
@@ -70,7 +70,7 @@ func TestWriteKeepsExistingDockerignore(t *testing.T) {
 	if err := os.WriteFile(di, []byte("my-custom-ignore\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	written, err := Write(dir)
+	written, err := Write(dir, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,5 +87,34 @@ func TestWriteKeepsExistingDockerignore(t *testing.T) {
 	}
 	if !kept {
 		t.Errorf("expected a 'kept existing' note for .dockerignore, got %v", written)
+	}
+}
+
+func TestComposePersistMounts(t *testing.T) {
+	on := Files(true)["compose.sandbox.yaml"]
+	off := Files(false)["compose.sandbox.yaml"]
+	for _, m := range []string{"./sandbox-data/engram:/root/.engram", "./sandbox-data/opencode:/root/.local/share/opencode"} {
+		if !strings.Contains(on, m) {
+			t.Errorf("persist=true compose missing %q", m)
+		}
+		if strings.Contains(off, m) {
+			t.Errorf("persist=false compose must not contain %q", m)
+		}
+	}
+	if !strings.Contains(off, "./sandbox-work:/work") || !strings.Contains(on, "./sandbox-work:/work") {
+		t.Error("both modes must keep the ./sandbox-work:/work mount")
+	}
+	dir := t.TempDir()
+	if _, err := Write(dir, true); err != nil {
+		t.Fatal(err)
+	}
+	if !PersistEnabled(dir) {
+		t.Error("PersistEnabled should be true after Write(persist=true)")
+	}
+	if _, err := Write(dir, false); err != nil {
+		t.Fatal(err)
+	}
+	if PersistEnabled(dir) {
+		t.Error("PersistEnabled should be false after Write(persist=false)")
 	}
 }

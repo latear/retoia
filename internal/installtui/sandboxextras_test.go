@@ -9,7 +9,7 @@ import (
 
 func TestSandboxExtras(t *testing.T) {
 	m := sandboxExtrasModel{ex: defaultSandboxExtras()}
-	if !(m.ex.engram && m.ex.context7 && m.ex.plugins) {
+	if !(m.ex.engram && m.ex.context7 && m.ex.plugins && m.ex.persist) {
 		t.Fatal("defaults should all be on")
 	}
 	// space toggles the cursor row (0 = Engram)
@@ -38,7 +38,7 @@ func TestSandboxExtras(t *testing.T) {
 	// view shows the rows + banner
 	vm, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
 	v := vm.(sandboxExtrasModel).View()
-	for _, want := range []string{"Engram", "Context7", "Continue", bannerFragment} {
+	for _, want := range []string{"Engram", "Context7", "Persist data", "Continue", bannerFragment} {
 		if !strings.Contains(v, want) {
 			t.Errorf("extras view missing %q", want)
 		}

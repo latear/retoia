@@ -321,6 +321,14 @@ func TestPurgeSandboxArtifacts(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// sandbox-data (persisted memory/state) must survive too.
+	if err := os.MkdirAll(filepath.Join(dir, "sandbox-data", "engram"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sandbox-data", "engram", "engram.db"), []byte("memory"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
 	removed := purgeSandboxArtifacts(io.Discard, dir)
 	if len(removed) != 6 {
 		t.Errorf("removed %d artifacts, want 6: %v", len(removed), removed)
@@ -332,6 +340,9 @@ func TestPurgeSandboxArtifacts(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "sandbox-work", "loot.txt")); err != nil {
 		t.Errorf("sandbox-work must be preserved: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "sandbox-data", "engram", "engram.db")); err != nil {
+		t.Errorf("sandbox-data must be preserved: %v", err)
 	}
 }
 

@@ -13,13 +13,14 @@ type sandboxExtras struct {
 	engram   bool // the persistent-memory MCP
 	context7 bool // the library-docs MCP
 	plugins  bool // the OpenCode sidebar plugins
+	persist  bool // bind-mount Engram/OpenCode state to ./sandbox-data
 }
 
 func defaultSandboxExtras() sandboxExtras {
-	return sandboxExtras{engram: true, context7: true, plugins: true}
+	return sandboxExtras{engram: true, context7: true, plugins: true, persist: true}
 }
 
-const sandboxExtrasCount = 3
+const sandboxExtrasCount = 4
 
 // sandboxExtrasModel is the toggle page shown before a sandbox build.
 type sandboxExtrasModel struct {
@@ -40,6 +41,8 @@ func (m *sandboxExtrasModel) toggle(i int) {
 		m.ex.context7 = !m.ex.context7
 	case 2:
 		m.ex.plugins = !m.ex.plugins
+	case 3:
+		m.ex.persist = !m.ex.persist
 	}
 }
 
@@ -53,6 +56,7 @@ func (m sandboxExtrasModel) rows() []extrasRow {
 		{"Engram", "persistent-memory MCP", m.ex.engram},
 		{"Context7", "live library/API docs MCP", m.ex.context7},
 		{"Sidebar plugins", "sub-agent monitor + task panel", m.ex.plugins},
+		{"Persist data", "memory + state across restarts", m.ex.persist},
 	}
 }
 

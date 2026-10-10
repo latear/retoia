@@ -724,7 +724,8 @@ func cmdSandboxRebuild(out io.Writer, args []string) error {
 	}
 	// Refresh the Docker scaffold (Dockerfile/compose/entrypoint) in place; keep
 	// the baked Retoia config as-is.
-	if _, err := sandbox.Write(*dir); err != nil {
+	// Keep whatever persist choice the existing scaffold was made with.
+	if _, err := sandbox.Write(*dir, sandbox.PersistEnabled(*dir)); err != nil {
 		return fmt.Errorf("refreshing the sandbox scaffold: %w", err)
 	}
 	serverKey := onboard.ResolveServerKey(os.Getenv("RETOIA_API_KEY"), keystore.Get)
@@ -746,10 +747,11 @@ func cmdSandboxRebuild(out io.Writer, args []string) error {
 func cmdSandboxInit(out io.Writer, args []string) error {
 	fs := flag.NewFlagSet("sandbox init", flag.ContinueOnError)
 	dir := fs.String("dir", ".", "directory to write the sandbox artifacts into")
+	noPersist := fs.Bool("no-persist", false, "do not bind-mount Engram/OpenCode state to ./sandbox-data (fully ephemeral)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	written, err := sandbox.Write(*dir)
+	written, err := sandbox.Write(*dir, !*noPersist)
 	if err != nil {
 		return err
 	}
@@ -792,13 +794,13 @@ func cmdSandboxAttach(args []string, opencode bool) error {
 
 // cmdSandboxUninstall tears the sandbox down: `docker compose down` removes the
 // container and its network; --rmi also removes the retoia-sandbox image and
-// --purge deletes the generated scaffold. The mounted sandbox-work/ is always
-// kept — it holds the user's work.
+// --purge deletes the generated scaffold. The mounted sandbox-work/ and
+// sandbox-data/ are always kept — they hold the user's work and persisted state.
 func cmdSandboxUninstall(out io.Writer, args []string) error {
 	fs := flag.NewFlagSet("sandbox uninstall", flag.ContinueOnError)
 	dir := fs.String("dir", ".", "directory holding the sandbox artifacts")
 	rmi := fs.Bool("rmi", false, "also remove the retoia-sandbox image")
-	purge := fs.Bool("purge", false, "also delete the generated scaffold (keeps sandbox-work/)")
+	purge := fs.Bool("purge", false, "also delete the generated scaffold (keeps sandbox-work/ and sandbox-data/)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -825,7 +827,7 @@ func cmdSandboxUninstall(out io.Writer, args []string) error {
 
 	if *purge {
 		purgeSandboxArtifacts(out, *dir)
-		fmt.Fprintln(out, "Kept sandbox-work/ (your mounted work dir).")
+		fmt.Fprintln(out, "Kept sandbox-work/ and sandbox-data/ (your work and persisted memory/state).")
 	}
 
 	fmt.Fprintln(out, "Sandbox uninstall done.")
@@ -886,7 +888,7 @@ func runDocker(out io.Writer, args ...string) error {
 }
 
 // purgeSandboxArtifacts removes the generated sandbox scaffold under dir,
-// deliberately never touching sandbox-work/. It returns the names it removed.
+// deliberately never touching sandbox-work/ or sandbox-data/. It returns the names it removed.
 func purgeSandboxArtifacts(out io.Writer, dir string) []string {
 	var removed []string
 	for _, n := range []string{

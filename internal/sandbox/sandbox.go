@@ -18,12 +18,13 @@ import (
 	"strings"
 )
 
-// Files returns the always-written sandbox artifacts (filename → content). The
-// build context is the repo root, so run docker from a retoia checkout.
-func Files() map[string]string {
+// Files returns the always-written sandbox artifacts (filename → content). When
+// persist is true the compose file also bind-mounts Engram's and OpenCode's
+// state dirs to ./sandbox-data so memory and sessions survive the container.
+func Files(persist bool) map[string]string {
 	return map[string]string{
 		"Dockerfile.sandbox":   dockerfile,
-		"compose.sandbox.yaml": compose,
+		"compose.sandbox.yaml": composeFor(persist),
 		"retoia-entrypoint.sh": entrypoint,
 		"SANDBOX.md":           readme,
 	}
@@ -33,12 +34,12 @@ func Files() map[string]string {
 // filenames written. `.dockerignore` is written only when absent, so an existing
 // one is never clobbered; when it is skipped, its name is returned with a
 // " (kept existing)" suffix.
-func Write(dir string) ([]string, error) {
+func Write(dir string, persist bool) ([]string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("creating %q: %w", dir, err)
 	}
 
-	files := Files()
+	files := Files(persist)
 	names := make([]string, 0, len(files)+1)
 	for n := range files {
 		names = append(names, n)
@@ -94,8 +95,8 @@ RUN curl -fsSL https://opencode.ai/install | bash -s -- --version 1.18.34
 ENV PATH="/root/.opencode/bin:${PATH}"
 
 # Engram (persistent-memory MCP), inside the container. Its SQLite lives at
-# ~/.engram in the container filesystem, so the memory is per-container and dies
-# with it. Best effort — a failed download must not fail the whole image build.
+# ~/.engram in the container filesystem; it dies with the container unless
+# persist mode bind-mounts it to ./sandbox-data/engram. Best effort — a failed download must not fail the whole image build.
 RUN bash -c 'set -u; \
     case "$(uname -m)" in x86_64) a=amd64;; aarch64|arm64) a=arm64;; *) a=amd64;; esac; \
     tag="$(curl -fsSL --connect-timeout 15 --max-time 60 https://api.github.com/repos/Gentleman-Programming/engram/releases/latest | grep -o "\"tag_name\": *\"[^\"]*\"" | head -1 | sed -E "s/.*\"([^\"]*)\"$/\1/")"; \
@@ -123,6 +124,31 @@ WORKDIR /work
 ENTRYPOINT ["/usr/local/bin/retoia-entrypoint"]
 CMD []
 `
+
+// PersistEnabled reports whether the compose file in dir already mounts the
+// persisted state dirs, so a refresh can keep the user's earlier choice.
+func PersistEnabled(dir string) bool {
+	data, err := os.ReadFile(filepath.Join(dir, "compose.sandbox.yaml"))
+	return err == nil && strings.Contains(string(data), persistMounts[0])
+}
+
+// persistMounts are the extra compose volumes added in persist mode.
+var persistMounts = []string{
+	"./sandbox-data/engram:/root/.engram",
+	"./sandbox-data/opencode:/root/.local/share/opencode",
+}
+
+func composeFor(persist bool) string {
+	if !persist {
+		return compose
+	}
+	var b strings.Builder
+	b.WriteString(compose)
+	for _, m := range persistMounts {
+		b.WriteString("      - " + m + "\n")
+	}
+	return b.String()
+}
 
 const compose = `# Reto IA sandbox edition.
 #   RETOIA_API_KEY=... docker compose -f compose.sandbox.yaml up -d --build
@@ -170,6 +196,7 @@ retoia
 retoia-models
 *.bak-retoia*
 sandbox-work
+sandbox-data
 `
 
 const readme = `# Reto IA — sandbox edition
@@ -179,9 +206,9 @@ config are never touched. The agent can install whatever tools it needs inside
 the container with apt.
 
 This runs the SAME Retoia suite as the Local edition - same agents, same
-skills, same per-agent model templates - just isolated and ephemeral:
-OpenCode is pinned to 1.18.34 (Local tracks latest) and everything dies with
-the container except the /work bind mount.
+skills, same per-agent model templates - just isolated: OpenCode is pinned to
+1.18.34 (Local tracks latest) and everything dies with the container except the
+bind mounts (/work, plus the persisted state below).
 
 Built from PUBLIC pieces only — you do NOT need the retoia repo. Your retoia
 binary generates the Retoia config on the host; the image bakes it in on top of
@@ -205,13 +232,25 @@ Colima on macOS). To do it by hand from this directory:
 The gateway key is written into the container at start from RETOIA_API_KEY, so
 it is never stored in an image layer. Your work dir is mounted at ./sandbox-work.
 
+## Persist data (on by default)
+
+So memory and sessions survive the container being closed or crashing, persist
+mode also bind-mounts, next to sandbox-work/:
+
+    ./sandbox-data/engram   → /root/.engram                      (Engram memory)
+    ./sandbox-data/opencode → /root/.local/share/opencode        (sessions, db, credentials)
+
+Turn it off in the install wizard (or ` + "`retoia sandbox init --no-persist`" + `) for a
+fully ephemeral sandbox. Treat sandbox-data/ as sensitive: it holds credentials.
+
 ## Teardown
 
     retoia sandbox uninstall            # docker compose down (stop + remove container)
     retoia sandbox uninstall --rmi      # also remove the retoia-sandbox image
-    retoia sandbox uninstall --purge    # also delete this scaffold (keeps sandbox-work/)
+    retoia sandbox uninstall --purge    # also delete this scaffold (keeps sandbox-work/ and sandbox-data/)
 
-sandbox-work/ is always kept — it is your mounted work dir.
+sandbox-work/ and sandbox-data/ are always kept — they hold your work and your
+persisted memory/state. Delete them by hand if you really want them gone.
 
 ## Notes
 
