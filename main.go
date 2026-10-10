@@ -100,7 +100,7 @@ func runCLI(out io.Writer, args []string) error {
 	case "update":
 		return cmdUpdate(out, args[1:])
 	case "version", "--version", "-v":
-		fmt.Fprintln(out, version+" — \x1b[38;5;33m♥\x1b[0m by fico")
+		fmt.Fprintln(out, version+" — \x1b[38;5;33m♥\x1b[0m by Late.Ar")
 		return nil
 	default:
 		return fmt.Errorf("unknown command %q (run 'retoia help')", args[0])

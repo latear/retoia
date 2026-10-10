@@ -30,9 +30,9 @@ import (
 // other reason to depend on internal/tui.
 var (
 	gateBlack  = lipgloss.Color("0")
-	gateRed    = lipgloss.Color("9")  // the Reto IA wordmark
-	gateAccent = lipgloss.Color("10") // green: border
-	gateWhite  = lipgloss.Color("15") // body text
+	gateRed    = lipgloss.Color("#0000FF") // the Reto IA wordmark
+	gateAccent = lipgloss.Color("10")      // green: border
+	gateWhite  = lipgloss.Color("15")      // body text
 	gateMuted  = lipgloss.Color("245")
 )
 

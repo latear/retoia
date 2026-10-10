@@ -8,9 +8,9 @@ import "github.com/charmbracelet/lipgloss"
 // wizard forces a black field.
 var (
 	colBlack = lipgloss.Color("0")
-	colRed   = lipgloss.Color("9")  // bright red — the Reto IA wordmark + accents
-	colGreen = lipgloss.Color("10") // bright green — success checks only
-	colWhite = lipgloss.Color("15") // body text
+	colRed   = lipgloss.Color("#0000FF") // Late.Ar blue (#0000FF) — the Reto IA wordmark + accents
+	colGreen = lipgloss.Color("10")      // bright green — success checks only
+	colWhite = lipgloss.Color("15")      // body text
 	colGray  = lipgloss.Color("245")
 )
 
@@ -86,7 +86,7 @@ var heartBlue = lipgloss.NewStyle().Foreground(lipgloss.Color("33"))
 
 // signature is the centered credit line shown at the very bottom of every screen.
 func signature() string {
-	return mutedStyle.Render(Version+" — ") + heartBlue.Render("♥") + mutedStyle.Render(" by fico")
+	return mutedStyle.Render(Version+" — ") + heartBlue.Render("♥") + mutedStyle.Render(" by Late.Ar")
 }
 
 // screen stacks the banner, the box, and the footer centered

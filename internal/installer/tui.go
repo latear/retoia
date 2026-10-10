@@ -16,29 +16,30 @@ const tuiBackupSuffix = ".bak-retoia-tui"
 // RetoiaThemeName is the OpenCode theme the suite ships and selects in tui.json.
 const RetoiaThemeName = "retoia"
 
-// retoiaThemeJSON is the Reto IA OpenCode theme: a flat, minimalist dark look
-// where the sidebar, the editor, and the input box share ONE uniform background
-// (nothing reads as a separate "box"), and the only structure is the red border
-// lines. Text is soft off-white, non-structural colors stay neutral, and red is
-// reserved for the lines, the accent/focus, and errors.
+// retoiaThemeJSON is the Reto IA OpenCode theme, in the Late.Ar palette: a flat,
+// minimalist dark look on a black background where the sidebar, the editor, and
+// the input box share ONE uniform background (nothing reads as a separate "box"),
+// and the only structure is the blue border lines. Text is white; the Late.Ar
+// blue (#0000FF) is reserved for the lines, the accent/focus, and the wordmark.
+// Error/warning/success stay as functional semantic colors (not brand accents).
 const retoiaThemeJSON = `{
   "$schema": "https://opencode.ai/theme.json",
   "theme": {
-    "primary": "#E04343",
-    "secondary": "#8A8A8A",
-    "accent": "#E04343",
-    "background": "#0E0E10",
-    "backgroundPanel": "#0E0E10",
-    "backgroundElement": "#0E0E10",
-    "text": "#E6E6E6",
-    "textMuted": "#7A7A7A",
-    "border": "#D64545",
-    "borderActive": "#FF5C5C",
-    "borderSubtle": "#3A2222",
+    "primary": "#0000FF",
+    "secondary": "#9AA0A6",
+    "accent": "#0000FF",
+    "background": "#000000",
+    "backgroundPanel": "#000000",
+    "backgroundElement": "#000000",
+    "text": "#FFFFFF",
+    "textMuted": "#9AA0A6",
+    "border": "#0000FF",
+    "borderActive": "#0000FF",
+    "borderSubtle": "#1C1C22",
     "error": "#FF5C5C",
     "warning": "#B8862B",
     "success": "#4FA96A",
-    "info": "#8A8A8A"
+    "info": "#9AA0A6"
   }
 }
 `
@@ -74,12 +75,12 @@ import { createMemo } from "solid-js"
 const id = "retoia-logo"
 
 const art = [
-  " ██████╗ █████╗ ██╗     ██████╗ ███████╗███╗   ██╗███████╗███████╗ ██████╗",
-  "██╔════╝██╔══██╗██║     ██╔══██╗██╔════╝████╗  ██║██╔════╝██╔════╝██╔════╝",
-  "██║     ███████║██║     ██║  ██║█████╗  ██╔██╗ ██║███████╗█████╗  ██║",
-  "██║     ██╔══██║██║     ██║  ██║██╔══╝  ██║╚██╗██║╚════██║██╔══╝  ██║",
-  "╚██████╗██║  ██║███████╗██████╔╝███████╗██║ ╚████║███████║███████╗╚██████╗",
-  " ╚═════╝╚═╝  ╚═╝╚══════╝╚═════╝ ╚══════╝╚═╝  ╚═══╝╚══════╝╚══════╝ ╚═════╝",
+  "██████╗ ███████╗████████╗ ██████╗     ██╗ █████╗ ",
+  "██╔══██╗██╔════╝╚══██╔══╝██╔═══██╗    ██║██╔══██╗",
+  "██████╔╝█████╗     ██║   ██║   ██║    ██║███████║",
+  "██╔══██╗██╔══╝     ██║   ██║   ██║    ██║██╔══██║",
+  "██║  ██║███████╗   ██║   ╚██████╔╝    ██║██║  ██║",
+  "╚═╝  ╚═╝╚══════╝   ╚═╝    ╚═════╝     ╚═╝╚═╝  ╚═╝",
 ]
 
 // Pad every line to the widest one so centering each line keeps the block
@@ -95,7 +96,7 @@ const Logo = () => {
   return (
     <box flexDirection="column" alignItems="center">
       {lines().map((line) => (
-        <text fg="red">{line}</text>
+        <text fg="blue">{line}</text>
       ))}
     </box>
   )

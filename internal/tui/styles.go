@@ -15,9 +15,9 @@ import (
 // look. Colors are fixed (not adaptive) because the UI forces a black field.
 var (
 	colorBlack  = lipgloss.Color("0")
-	colorRed    = lipgloss.Color("9")  // the Reto IA wordmark
-	colorAccent = lipgloss.Color("10") // green: selection, active breadcrumb, border
-	colorWhite  = lipgloss.Color("15") // body text
+	colorRed    = lipgloss.Color("#0000FF") // the Reto IA wordmark
+	colorAccent = lipgloss.Color("10")      // green: selection, active breadcrumb, border
+	colorWhite  = lipgloss.Color("15")      // body text
 	colorMuted  = lipgloss.Color("245")
 )
 

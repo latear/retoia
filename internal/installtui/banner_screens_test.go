@@ -10,7 +10,7 @@ import (
 )
 
 // bannerFragment is a chunk of the Reto IA wordmark that must appear on screens.
-const bannerFragment = "██████╗ █████╗"
+const bannerFragment = "██████╗ ███████╗"
 
 func TestBannerOnPicker(t *testing.T) {
 	groups := config.GroupModelsByCategory([]config.Model{
