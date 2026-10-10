@@ -1,6 +1,9 @@
 package mcpservers
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestCatalogSortedAndValid(t *testing.T) {
 	cat := Catalog()
@@ -44,12 +47,51 @@ func TestFind(t *testing.T) {
 	}
 }
 
-// TestNoAPIKeyPolicy enforces the catalog rule: no entry requires an API key or
-// subscription (nothing lands in Env).
-func TestNoAPIKeyPolicy(t *testing.T) {
+// TestEnvNamesOnly enforces the catalog rule: Env lists variable NAMES only
+// (the add path writes them as {env:NAME}); no key value is ever baked in.
+func TestEnvNamesOnly(t *testing.T) {
 	for _, s := range Catalog() {
-		if len(s.Env) > 0 {
-			t.Errorf("%s declares env %v; catalog policy forbids API-key/subscription servers", s.ID, s.Env)
+		for _, k := range s.Env {
+			if k == "" || strings.ToUpper(k) != k || strings.ContainsAny(k, "=:{} ") {
+				t.Errorf("%s: env %q must be a bare UPPER_CASE variable name", s.ID, k)
+			}
+		}
+	}
+}
+
+func TestCloudflareAndGitHubEntries(t *testing.T) {
+	cf, ok := Lookup("cloudflare")
+	if !ok {
+		t.Fatal("cloudflare not in catalog")
+	}
+	if !cf.Wireable() || cf.URL != "https://docs.mcp.cloudflare.com/mcp" || len(cf.Command) != 0 || len(cf.Env) != 0 {
+		t.Errorf("cloudflare should be a keyless remote at /mcp, got %+v", cf)
+	}
+
+	gh, ok := Lookup("github")
+	if !ok {
+		t.Fatal("github not in catalog")
+	}
+	if !gh.Wireable() || gh.URL != "" || len(gh.Command) == 0 || gh.Command[0] != "docker" {
+		t.Errorf("github should be a local docker command, got %+v", gh)
+	}
+	if len(gh.Env) != 1 || gh.Env[0] != "GITHUB_PERSONAL_ACCESS_TOKEN" {
+		t.Errorf("github env = %v, want [GITHUB_PERSONAL_ACCESS_TOKEN]", gh.Env)
+	}
+	// The container must receive the token by name (-e NAME, no baked value).
+	joined := strings.Join(gh.Command, " ")
+	if !strings.Contains(joined, "-e GITHUB_PERSONAL_ACCESS_TOKEN ") || strings.Contains(joined, "GITHUB_PERSONAL_ACCESS_TOKEN=") {
+		t.Errorf("github command must pass the token by name: %q", joined)
+	}
+	if len(gh.Prereqs) != 1 || gh.Prereqs[0] != "docker" {
+		t.Errorf("github prereqs = %v, want [docker]", gh.Prereqs)
+	}
+	for _, s := range []Server{cf, gh} {
+		if s.Name == "" || s.Description == "" || !strings.HasPrefix(s.RepoURL, "https://") {
+			t.Errorf("%s: malformed fields %+v", s.ID, s)
+		}
+		if s.URL != "" && !strings.HasPrefix(s.URL, "https://") {
+			t.Errorf("%s: remote URL must be https, got %q", s.ID, s.URL)
 		}
 	}
 }

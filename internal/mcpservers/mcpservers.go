@@ -11,8 +11,11 @@
 //     their repo and a note, so the catalog still recommends them honestly
 //     instead of writing a broken config.
 //
-// Every Command/Setup below was taken from the project's own documentation, and
-// no entry requires an API key or paid subscription (that is the catalog policy).
+// Every Command/Setup below was taken from the project's own documentation.
+// Most entries need no credentials; a few (GitHub) need a token the user owns.
+// Catalog policy: no key VALUE is ever baked into an entry or written to
+// opencode.json -- Env lists only variable NAMES, which `mcp add` turns into
+// {env:NAME} references resolved from the user's environment at launch.
 //
 // Engram and CodeGraph are intentionally not catalog entries here: Engram is
 // wired separately via internal/installer/engram.go (it needs a release
@@ -34,7 +37,7 @@ type Server struct {
 	// carries URL. When both are empty the server is Manual (see the note).
 	Command []string
 	URL     string
-	Env     []string // environment variables the server needs (never API keys here)
+	Env     []string // environment variables the server needs (names only, never values; written as {env:NAME})
 
 	// Setup lists the verified shell steps the user must run before the wired
 	// command works (e.g. building a Docker backend). The install wizard runs
@@ -67,6 +70,26 @@ var catalog = []Server{
 		RepoURL:     "https://github.com/upstash/context7",
 		URL:         "https://mcp.context7.com/mcp",
 		SetupNote:   "Hosted remote MCP; queries leave your environment. A CONTEXT7_API_KEY raises rate limits (optional).",
+	},
+	{
+		ID:          "cloudflare",
+		Name:        "Cloudflare (docs)",
+		Description: "Up-to-date Cloudflare product docs so the agent builds correct Workers/Pages/DNS config",
+		Category:    "docs",
+		RepoURL:     "https://github.com/cloudflare/mcp-server-cloudflare",
+		URL:         "https://docs.mcp.cloudflare.com/mcp",
+		SetupNote:   "Hosted remote MCP (Cloudflare Docs); no key required.",
+	},
+	{
+		ID:          "github",
+		Name:        "GitHub",
+		Description: "Repos, issues, PRs, code search and Actions for the agent",
+		Category:    "dev",
+		RepoURL:     "https://github.com/github/github-mcp-server",
+		Command:     []string{"docker", "run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"},
+		Env:         []string{"GITHUB_PERSONAL_ACCESS_TOKEN"},
+		SetupNote:   "Needs Docker and a GitHub Personal Access Token exported as $GITHUB_PERSONAL_ACCESS_TOKEN.",
+		Prereqs:     []string{"docker"},
 	},
 }
 
