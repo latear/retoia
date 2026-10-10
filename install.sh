@@ -48,7 +48,8 @@ detect_platform() {
   case "$(uname -s)" in
     Darwin) os="mac" ;;
     Linux)  os="linux" ;;
-    *) echo "SO no soportado: $(uname -s). Usá --build si tenés Go." >&2; exit 1 ;;
+    MINGW*|MSYS*|CYGWIN*) echo "Windows nativo no soportado: ejecutá este instalador dentro de WSL (WSL2 + una distro Linux)." >&2; exit 1 ;;
+    *) echo "SO no soportado: $(uname -s). En Windows usá WSL; o --build si tenés Go." >&2; exit 1 ;;
   esac
   case "$(uname -m)" in
     x86_64|amd64) arch="amd64" ;;
