@@ -151,6 +151,16 @@ func (m summaryModel) View() string {
 		b.WriteString(bullet(false, "Engram", mutedStyle.Render("skipped (not selected)")))
 	}
 
+	// Impeccable design skill (installed via npx).
+	switch {
+	case r.impeccableInstalled:
+		b.WriteString("\n" + bullet(true, "Impeccable", "installed "+mutedStyle.Render("(npx skills add pbakaus/impeccable)")))
+	case r.impeccableChosen:
+		b.WriteString("\n" + bullet(false, "Impeccable", warnStyle.Render(r.impeccableSkipReason)))
+	default:
+		b.WriteString("\n" + bullet(false, "Impeccable", mutedStyle.Render("skipped (not selected)")))
+	}
+
 	// Next steps: how to configure the agent models and load the changes.
 	b.WriteString("\n\n" + boldAccentStyle.Render("Next steps") + "\n")
 	if r.noGateway {

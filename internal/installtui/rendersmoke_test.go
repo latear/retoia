@@ -30,6 +30,6 @@ func TestRenderNoPanicAcrossSizes(t *testing.T) {
 		}
 	}
 
-	render("page1", newSetupModel(true, true, true))
+	render("page1", newSetupModel(true, true, true, true))
 	render("picker", newAgentPicker("cs-recon", "m0", groups))
 }

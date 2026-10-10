@@ -18,11 +18,12 @@ import (
 type setupRow int
 
 const (
-	rowOpenCode setupRow = iota // "[ ] Install OpenCode" (only when missing)
-	rowEngram                   // "[x] Engram (persistent memory)"
-	rowContext7                 // "[x] Context7 (library docs)"
-	rowTUI                      // "[ ] Sidebar plugins (sub-agents + todo panels)"
-	rowNext                     // "Next →" (proceed to the server-key page)
+	rowOpenCode   setupRow = iota // "[ ] Install OpenCode" (only when missing)
+	rowEngram                     // "[x] Engram (persistent memory)"
+	rowContext7                   // "[x] Context7 (library docs)"
+	rowImpeccable                 // "[x] Impeccable (design skill)"
+	rowTUI                        // "[ ] Sidebar plugins (sub-agents + todo panels)"
+	rowNext                       // "Next →" (proceed to the server-key page)
 )
 
 // setupIntro is the dim note above the rows: it tells the user the mandatory
@@ -60,6 +61,7 @@ type setupModel struct {
 
 	installEngram     bool // toggle installing + configuring Engram (persistent memory)
 	installContext7   bool // toggle wiring the context7 docs MCP (library docs)
+	installImpeccable bool // toggle installing the Impeccable design skill (npx)
 	engramPresent     bool // engram binary already on the machine (detected)
 	installTUIPlugins bool // toggle the OpenCode sidebar plugins (npm; fetched at start)
 	lowMemory         bool // host has little RAM → plugins default off (shown as a hint)
@@ -74,7 +76,7 @@ type setupModel struct {
 
 // newSetupModel builds page 1, seeding the extras toggles from the caller (so
 // returning here via Esc preserves them) and detecting OpenCode.
-func newSetupModel(installEngram, installContext7, installTUIPlugins bool) setupModel {
+func newSetupModel(installEngram, installContext7, installImpeccable, installTUIPlugins bool) setupModel {
 	present := openCodeInstalled()
 	_, engramPresent := installer.ResolveEngramPath()
 	m := setupModel{
@@ -82,6 +84,7 @@ func newSetupModel(installEngram, installContext7, installTUIPlugins bool) setup
 		openCodePresent:   present,
 		installEngram:     installEngram || engramPresent, // detected → ticked (configure it)
 		installContext7:   installContext7,
+		installImpeccable: installImpeccable,
 		engramPresent:     engramPresent,
 		installTUIPlugins: installTUIPlugins,
 		lowMemory:         lowMemoryHost(),
@@ -135,7 +138,7 @@ func (m *setupModel) rebuildRows() {
 	if !m.openCodePresent {
 		m.rows = append(m.rows, rowOpenCode)
 	}
-	m.rows = append(m.rows, rowEngram, rowContext7, rowTUI, rowNext)
+	m.rows = append(m.rows, rowEngram, rowContext7, rowImpeccable, rowTUI, rowNext)
 	if m.cursor >= len(m.rows) {
 		m.cursor = len(m.rows) - 1
 	}
@@ -231,6 +234,8 @@ func (m *setupModel) toggle(r setupRow) {
 		m.installEngram = !m.installEngram
 	case rowContext7:
 		m.installContext7 = !m.installContext7
+	case rowImpeccable:
+		m.installImpeccable = !m.installImpeccable
 	case rowTUI:
 		m.installTUIPlugins = !m.installTUIPlugins
 	}
@@ -283,6 +288,9 @@ func (m setupModel) View() string {
 	// Context7 docs MCP (remote): current library/API docs for the agent.
 	b.WriteString(m.renderRow(rowContext7, checkbox(m.installContext7)+" Context7 "+mutedStyle.Render("(library docs for the agent · remote)")) + "\n")
 
+	// Impeccable design skill (installed via npx; needs Node.js).
+	b.WriteString(m.renderRow(rowImpeccable, checkbox(m.installImpeccable)+" Impeccable "+mutedStyle.Render("(design skill · needs Node.js/npx)")) + "\n")
+
 	// Sidebar plugins toggle: visual-only panels (sub-agents + todo) OpenCode
 	// fetches from npm at first start. The underlying features are native, so
 	// skipping these only drops the panels — and speeds up the first launch on a
@@ -322,8 +330,8 @@ func checkbox(on bool) string {
 
 // runSetupPage runs page 1 and returns the collected choices. The seed values
 // pre-set the toggles (used when returning here from page 2 via Esc).
-func runSetupPage(installEngram, installContext7, installTUIPlugins bool) (setupResult, error) {
-	final, err := tea.NewProgram(newSetupModel(installEngram, installContext7, installTUIPlugins), tea.WithAltScreen()).Run()
+func runSetupPage(installEngram, installContext7, installImpeccable, installTUIPlugins bool) (setupResult, error) {
+	final, err := tea.NewProgram(newSetupModel(installEngram, installContext7, installImpeccable, installTUIPlugins), tea.WithAltScreen()).Run()
 	if err != nil {
 		return setupResult{}, fmt.Errorf("running install setup page: %w", err)
 	}
@@ -337,6 +345,7 @@ func runSetupPage(installEngram, installContext7, installTUIPlugins bool) (setup
 	return setupResult{
 		installEngram:        sm.installEngram,
 		installContext7:      sm.installContext7,
+		installImpeccable:    sm.installImpeccable,
 		installTUIPlugins:    sm.installTUIPlugins,
 		openCodePresent:      sm.openCodePresent,
 		openCodeInstalledNow: sm.installedNow,

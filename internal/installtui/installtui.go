@@ -75,10 +75,15 @@ func openCodeInstalled() bool {
 	return false
 }
 
+// impeccableInstall is the Impeccable installer, a variable so tests can stub
+// it without running npx.
+var impeccableInstall = installer.InstallImpeccableSkill
+
 // setupResult is what page 1 collects.
 type setupResult struct {
 	installEngram        bool // toggle installing + configuring Engram
 	installContext7      bool // toggle wiring the context7 docs MCP
+	installImpeccable    bool // toggle installing the Impeccable design skill (npx)
 	installTUIPlugins    bool // toggle the OpenCode sidebar plugins (subagents/files/plan)
 	openCodePresent      bool // OpenCode present when the page exited
 	openCodeInstalledNow bool // OpenCode was installed during this page
@@ -125,6 +130,10 @@ type applyResult struct {
 	logoInstalled   bool     // the Reto IA home_logo TUI plugin was shipped + registered
 	tuiPluginsPath  string   // path to the tui.json that was written
 
+	impeccableChosen     bool   // the user ticked the Impeccable option
+	impeccableInstalled  bool   // the Impeccable skill was installed via npx
+	impeccableSkipReason string // set when chosen but the install was skipped/failed
+
 	engramChosen       bool   // the user ticked the Engram option
 	engramConfigured   bool   // the mcp.engram block was written to opencode.json
 	engramPath         string // resolved engram binary path
@@ -159,7 +168,7 @@ func Run(configPath, providerID, base string) error {
 
 	// PAGE 1 — extras. Engram and Context7 default on; sidebar plugins default
 	// on unless the host has little RAM.
-	setup, err := runSetupPage(true, true, !lowMemoryHost())
+	setup, err := runSetupPage(true, true, true, !lowMemoryHost())
 	if err != nil {
 		return err
 	}
@@ -185,7 +194,7 @@ func Run(configPath, providerID, base string) error {
 				return nil
 			}
 			if key.back {
-				setup, err = runSetupPage(setup.installEngram, setup.installContext7, setup.installTUIPlugins)
+				setup, err = runSetupPage(setup.installEngram, setup.installContext7, setup.installImpeccable, setup.installTUIPlugins)
 				if err != nil {
 					return err
 				}
@@ -336,6 +345,18 @@ func apply(configPath, providerID, base string, setup setupResult, key keyResult
 			}
 			res.context7Configured = true
 		}
+	}
+
+	// Impeccable design skill (only if chosen): best-effort via the official CLI.
+	// A missing npx or a failed install degrades to a skip reason, never an error.
+	if setup.installImpeccable {
+		res.impeccableChosen = true
+		ok, reason, ierr := impeccableInstall()
+		if ierr != nil {
+			reason = ierr.Error()
+		}
+		res.impeccableInstalled = ok && ierr == nil
+		res.impeccableSkipReason = reason
 	}
 
 	// TUI sidebar plugins (only if chosen): merged into tui.json (a sibling of

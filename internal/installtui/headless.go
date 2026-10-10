@@ -15,6 +15,7 @@ import (
 type HeadlessOptions struct {
 	Engram     bool // install + configure the Engram MCP
 	Context7   bool // wire the context7 docs MCP
+	Impeccable bool // install the Impeccable design skill via npx (best-effort)
 	TUIPlugins bool // install the OpenCode sidebar plugins (sub-agent monitor + todo)
 }
 
@@ -36,6 +37,7 @@ func RunHeadless(out io.Writer, configPath, providerID, base string, opts Headle
 	setup := setupResult{
 		installEngram:     opts.Engram,
 		installContext7:   opts.Context7,
+		installImpeccable: opts.Impeccable,
 		installTUIPlugins: opts.TUIPlugins,
 		openCodePresent:   openCodeInstalled(),
 	}
@@ -64,6 +66,11 @@ func RunHeadless(out io.Writer, configPath, providerID, base string, opts Headle
 	}
 	if res.context7Configured {
 		fmt.Fprintln(out, "  context7: configured")
+	}
+	if res.impeccableInstalled {
+		fmt.Fprintln(out, "  impeccable: installed")
+	} else if res.impeccableChosen {
+		fmt.Fprintf(out, "  impeccable: skipped — %s\n", res.impeccableSkipReason)
 	}
 	if res.noGateway {
 		fmt.Fprintln(out, "  gateway: none — extras installed; set the gateway and assign models later")

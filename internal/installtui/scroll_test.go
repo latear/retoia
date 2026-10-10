@@ -30,7 +30,7 @@ func TestWindowLinesFitsAndScrolls(t *testing.T) {
 // TestSetupPageScrollsOnShortTerminal verifies the install card stays bounded and
 // scrolls internally when the terminal is too short for all rows.
 func TestSetupPageScrollsOnShortTerminal(t *testing.T) {
-	m := newSetupModel(true, true, true)
+	m := newSetupModel(true, true, true, true)
 	um, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 12})
 	view := um.(setupModel).View()
 	if !strings.Contains(view, "more") {

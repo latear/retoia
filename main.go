@@ -125,6 +125,7 @@ func cmdInstall(args []string) error {
 	yes := fs.Bool("yes", false, "non-interactive install (no TUI): apply with defaults; used by automation and the sandbox image")
 	engram := fs.Bool("engram", true, "with --yes: install and configure the Engram MCP")
 	context7 := fs.Bool("context7", true, "with --yes: wire the context7 docs MCP")
+	impeccable := fs.Bool("impeccable", true, "with --yes: install the Impeccable design skill via npx (best-effort)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -134,7 +135,7 @@ func cmdInstall(args []string) error {
 	// Non-interactive path: no TTY to prompt on.
 	if *yes {
 		if err := installtui.RunHeadless(os.Stdout, *configPath, *providerID, base,
-			installtui.HeadlessOptions{Engram: *engram, Context7: *context7, TUIPlugins: true}); err != nil {
+			installtui.HeadlessOptions{Engram: *engram, Context7: *context7, Impeccable: *impeccable, TUIPlugins: true}); err != nil {
 			return err
 		}
 		notifyIfUpdate(os.Stdout, *configPath, *providerID)
