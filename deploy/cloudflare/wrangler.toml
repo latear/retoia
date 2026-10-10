@@ -1,4 +1,4 @@
-name = "cs-updates"
+name = "retoia-cli"
 compatibility_date = "2026-01-01"
 
 # Cloudflare Pages (advanced mode): the single _worker.js in this dir handles all
@@ -8,12 +8,12 @@ pages_build_output_dir = "."
 
 [vars]
 GITHUB_REPO = "TBD_OWNER/TBD_REPO"
-HOME_URL = "https://fico.ar"
-# PUBLIC_BASE = "https://cs-updates.fico.ar"   # optional; defaults to the request origin
+HOME_URL = "https://retoia.app"
+PUBLIC_BASE = "https://cli.retoia.app"
 # NOTE: do NOT put LITELLM_URL here — [vars] land in the committed repo and the
 # dashboard in the clear. Set it as a SECRET so the gateway URL is not leaked.
 
 # SECRETS — never put these here (they stay encrypted, out of the repo). Set per project:
-#   wrangler pages secret put GITHUB_TOKEN --project-name cs-updates   (required)
-#   wrangler pages secret put LITELLM_URL  --project-name cs-updates   (validate keys vs the gateway)
-#   wrangler pages secret put UPDATE_KEYS  --project-name cs-updates   (optional allowlist)
+#   wrangler pages secret put GITHUB_TOKEN --project-name retoia-cli   (required)
+#   wrangler pages secret put LITELLM_URL  --project-name retoia-cli   (validate keys vs the gateway)
+#   wrangler pages secret put UPDATE_KEYS  --project-name retoia-cli   (optional allowlist)

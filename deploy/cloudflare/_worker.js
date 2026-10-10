@@ -1,4 +1,4 @@
-// cs-updates.fico.ar — Cloudflare Worker backing `retoia update`.
+// cli.retoia.app — Cloudflare Worker backing `retoia update`.
 //
 // Key-gated, serverless (no server to run). It holds a GitHub token as a secret
 // and is the ONLY thing that talks to GitHub: clients fetch updates with their
@@ -30,7 +30,7 @@ export default {
 			path === "/retoia/manifest.json" || path.startsWith("/retoia/dl/");
 		if (!isAPI) {
 			// Casual visitor (or root) → send them home.
-			return Response.redirect(env.HOME_URL || "https://fico.ar", 302);
+			return Response.redirect(env.HOME_URL || "https://retoia.app", 302);
 		}
 
 		const key = (request.headers.get("Authorization") || "")

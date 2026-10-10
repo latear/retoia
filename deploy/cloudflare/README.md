@@ -1,4 +1,4 @@
-# cs-updates.fico.ar — Cloudflare Pages Function for `retoia update`
+# cli.retoia.app — Cloudflare Pages Function for `retoia update`
 
 A serverless, key-gated update endpoint — no server to run. It holds the GitHub
 token as a secret and is the only thing that talks to GitHub; clients fetch
@@ -15,17 +15,17 @@ Cloudflare token deploys it. (It is also a valid standalone Worker — see the e
 cd deploy/cloudflare
 # a Pages-scoped API token works here (export CLOUDFLARE_API_TOKEN, or `wrangler login`)
 
-wrangler pages project create cs-updates          # first time only
-wrangler pages secret put GITHUB_TOKEN --project-name cs-updates   # read access to the private repo
+wrangler pages project create retoia-cli          # first time only
+wrangler pages secret put GITHUB_TOKEN --project-name retoia-cli   # read access to the private repo
 # auth: at least one of —
-wrangler pages secret put LITELLM_URL  --project-name cs-updates   # validate keys vs the gateway, OR
-wrangler pages secret put UPDATE_KEYS  --project-name cs-updates   # comma-separated allowlist
+wrangler pages secret put LITELLM_URL  --project-name retoia-cli   # validate keys vs the gateway, OR
+wrangler pages secret put UPDATE_KEYS  --project-name retoia-cli   # comma-separated allowlist
 
-wrangler pages deploy . --project-name cs-updates
+wrangler pages deploy . --project-name retoia-cli
 ```
 
-Then map the domain: Cloudflare dashboard → the `cs-updates` Pages project →
-Custom domains → add **cs-updates.fico.ar**.
+Then map the domain: Cloudflare dashboard → the `retoia-cli` Pages project →
+Custom domains → add **cli.retoia.app**.
 
 ## Auth
 
@@ -49,7 +49,7 @@ root and other paths → `302` to `HOME_URL`.
 ## Also deployable as a plain Worker
 
 The same `_worker.js` runs as a standalone Worker if you prefer (needs a
-*Workers Scripts: Edit* token): `wrangler deploy _worker.js --name cs-updates`,
+*Workers Scripts: Edit* token): `wrangler deploy _worker.js --name retoia-cli`,
 secrets via `wrangler secret put`.
 
 ## Signatures

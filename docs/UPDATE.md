@@ -68,7 +68,7 @@ in its [README](../cmd/retoia-update-server/README.md).
 (`_worker.js`) ships in [`deploy/cloudflare/`](../deploy/cloudflare/) — same
 contract, holds the GitHub token as a secret, validates keys against an allowlist
 and/or LiteLLM, and deploys with a Pages-scoped token (`wrangler pages deploy`)
-to e.g. `cs-updates.fico.ar`. The only requirements for any implementation are:
+to e.g. `cli.retoia.app`. The only requirements for any implementation are:
 check the Bearer, never expose the GitHub token, and serve the JSON + assets over
 HTTPS.
 
