@@ -138,3 +138,48 @@ func TestSetAgentModelChangesOnlyOneValueAndBacksUp(t *testing.T) {
 		t.Fatalf("backup content does not match original file")
 	}
 }
+
+func TestSetAgent(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "opencode.json")
+	orig := []byte(`{"provider":{"retoia":{}}}`)
+	if err := os.WriteFile(path, orig, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := SetAgent(path, "retoia", "primary", "Reto IA — principal agent.", "retoia", "auto"); err != nil {
+		t.Fatalf("SetAgent() error = %v", err)
+	}
+	data, _ := os.ReadFile(path)
+	if !gjson.ValidBytes(data) {
+		t.Fatal("config is not valid JSON after SetAgent")
+	}
+	for p, want := range map[string]string{
+		"agent.retoia.mode":        "primary",
+		"agent.retoia.description": "Reto IA — principal agent.",
+		"agent.retoia.model":       "retoia/auto",
+	} {
+		if got := gjson.GetBytes(data, p).String(); got != want {
+			t.Errorf("%s = %q, want %q", p, got, want)
+		}
+	}
+	if !gjson.GetBytes(data, "provider.retoia").Exists() {
+		t.Error("existing provider block was lost")
+	}
+	if bak, err := os.ReadFile(path + BackupSuffix); err != nil || string(bak) != string(orig) {
+		t.Errorf("backup missing or differs: %v", err)
+	}
+
+	// Invalid input config: the write fails validation and the original is restored.
+	bad := filepath.Join(dir, "bad.json")
+	garbage := []byte(`{not json`)
+	if err := os.WriteFile(bad, garbage, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := SetAgent(bad, "retoia", "primary", "d", "retoia", "auto"); err == nil {
+		t.Error("expected an error for invalid JSON config")
+	}
+	if got, _ := os.ReadFile(bad); string(got) != string(garbage) {
+		t.Errorf("original not restored: %q", got)
+	}
+}

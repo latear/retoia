@@ -245,6 +245,13 @@ func apply(configPath, providerID, base string, setup setupResult, key keyResult
 		}
 		res.baseURL = base
 		res.baseURLSet = true
+		// Seed the single principal agent on the default model.
+		if modelID := defaultModelID(key.models); modelID != "" {
+			if err := installer.AddAgent(configPath, installer.PrincipalAgentName, "primary",
+				"Reto IA — principal agent.", providerID, modelID); err != nil {
+				return res, fmt.Errorf("seeding principal agent: %w", err)
+			}
+		}
 	default:
 		if err := installer.SetProviderBaseURL(configPath, providerID, base); err != nil {
 			return res, fmt.Errorf("setting provider base URL: %w", err)
@@ -389,4 +396,18 @@ func resolveAuthPath(home string) string {
 		return filepath.Join(v, "opencode", "auth.json")
 	}
 	return filepath.Join(home, ".local", "share", "opencode", "auth.json")
+}
+
+// defaultModelID picks the model to seed the principal agent with: "auto" when
+// the gateway offers it, otherwise the first model; "" when there are none.
+func defaultModelID(models []config.Model) string {
+	for _, m := range models {
+		if m.ID == "auto" {
+			return m.ID
+		}
+	}
+	if len(models) > 0 {
+		return models[0].ID
+	}
+	return ""
 }

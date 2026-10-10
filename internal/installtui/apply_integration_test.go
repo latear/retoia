@@ -43,6 +43,12 @@ func TestApplyInstallFreshConfig(t *testing.T) {
 	if !gjson.GetBytes(data, "provider.retoia.models.model-a").Exists() {
 		t.Error("gateway provider models were not written (OpenCode could not route)")
 	}
+	if got := gjson.GetBytes(data, "agent.retoia.mode").String(); got != "primary" {
+		t.Errorf("agent.retoia.mode = %q, want primary", got)
+	}
+	if got := gjson.GetBytes(data, "agent.retoia.model").String(); got != "retoia/model-a" {
+		t.Errorf("agent.retoia.model = %q, want retoia/model-a", got)
+	}
 }
 
 // TestApplyInstallEndToEnd drives the real install core, apply(), against
@@ -133,4 +139,16 @@ func TestApplyInstallEndToEnd(t *testing.T) {
 		}
 	}
 	t.Logf("\n----- final install screen -----\n%s", view)
+}
+
+func TestDefaultModelID(t *testing.T) {
+	if got := defaultModelID(nil); got != "" {
+		t.Errorf("empty = %q, want empty", got)
+	}
+	if got := defaultModelID([]config.Model{{ID: "x"}, {ID: "y"}}); got != "x" {
+		t.Errorf("fallback = %q, want x", got)
+	}
+	if got := defaultModelID([]config.Model{{ID: "x"}, {ID: "auto"}}); got != "auto" {
+		t.Errorf("auto preference = %q, want auto", got)
+	}
 }

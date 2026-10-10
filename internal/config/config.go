@@ -72,7 +72,7 @@ func Load(path, providerID string) (*Config, error) {
 // for the subagents — so those agents stay managed even when pointed at a
 // non-primary provider.
 func isRetoiaAgentName(name string) bool {
-	return strings.HasPrefix(name, "Retoia") || strings.HasPrefix(name, "cs-")
+	return strings.HasPrefix(name, "Retoia") || strings.HasPrefix(name, "retoia") || strings.HasPrefix(name, "cs-")
 }
 
 // ManagedAgents returns every agent under `.agent` whose `.model` string
@@ -222,5 +222,52 @@ func SetAgentModel(path, providerID, agentName, modelID string) error {
 		return fmt.Errorf("written config %q failed JSON validation; restored original from %q", path, backupPath)
 	}
 
+	return nil
+}
+
+// SetAgent backs up the config file at path, then surgically writes
+// `agent.<agentName>.mode`, `.description` and `.model` (= "<providerID>/<modelID>")
+// in one transaction, preserving the rest of the file. It re-reads the result and
+// validates it still parses as JSON; on failure it restores the original content
+// and returns an error.
+func SetAgent(path, agentName, mode, description, providerID, modelID string) error {
+	original, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("reading config %q: %w", path, err)
+	}
+
+	if !gjson.ValidBytes(original) {
+		return fmt.Errorf("config %q does not contain valid JSON; leaving it untouched", path)
+	}
+
+	backupPath := path + BackupSuffix
+	if err := os.WriteFile(backupPath, original, 0o644); err != nil {
+		return fmt.Errorf("writing backup %q: %w", backupPath, err)
+	}
+
+	updated := original
+	fields := []struct{ key, value string }{
+		{"mode", mode},
+		{"description", description},
+		{"model", providerID + "/" + modelID},
+	}
+	for _, f := range fields {
+		updated, err = sjson.SetBytes(updated, fmt.Sprintf("agent.%s.%s", agentName, f.key), f.value)
+		if err != nil {
+			return fmt.Errorf("setting %s for agent %q: %w", f.key, agentName, err)
+		}
+	}
+
+	if err := os.WriteFile(path, updated, 0o644); err != nil {
+		return fmt.Errorf("writing config %q: %w", path, err)
+	}
+
+	written, err := os.ReadFile(path)
+	if err != nil || !gjson.ValidBytes(written) {
+		if restoreErr := os.WriteFile(path, original, 0o644); restoreErr != nil {
+			return fmt.Errorf("written config failed validation and restore failed: %w", restoreErr)
+		}
+		return fmt.Errorf("written config %q failed JSON validation; restored original from %q", path, backupPath)
+	}
 	return nil
 }

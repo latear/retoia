@@ -125,3 +125,14 @@ func AddProvider(configPath, providerID, baseURL string, models []config.Model) 
 	}
 	return nil
 }
+
+// PrincipalAgentName is the name of the single primary agent seeded at install
+// time and removed on uninstall.
+const PrincipalAgentName = "retoia"
+
+// AddAgent writes agent.<agentName> (mode, description and "<providerID>/<modelID>"
+// model) into the opencode.json at configPath. It is a thin wrapper over
+// config.SetAgent, which backs up, validates and restores on failure.
+func AddAgent(configPath, agentName, mode, description, providerID, modelID string) error {
+	return config.SetAgent(configPath, agentName, mode, description, providerID, modelID)
+}

@@ -183,7 +183,7 @@ func cmdUninstall(args []string) error {
 	authPath := defaultAuthPath()
 
 	// Config keys to remove: the provider and the MCP entries this tool wires.
-	paths := []string{"provider." + *providerID, "mcp.engram", "mcp.context7"}
+	paths := []string{"provider." + *providerID, "agent." + installer.PrincipalAgentName, "mcp.engram", "mcp.context7"}
 
 	if !*yes {
 		fmt.Printf("This removes provider %q, the Engram + Context7 MCP entries,\n"+
