@@ -195,7 +195,7 @@ type existsPromptModel struct {
 	currentVersion string // the running binary's version
 	age            string // how long ago the image was built
 	outdated       bool   // the image's version differs from the current binary
-	choice         string // "open" | "rebuild" | "cancel"
+	choice         string // "open" | "rebuild" | "delete" | "cancel"
 	quitting       bool
 	width, height  int
 }
@@ -214,6 +214,9 @@ func (m existsPromptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "r":
 			m.choice, m.quitting = "rebuild", true
+			return m, tea.Quit
+		case "d":
+			m.choice, m.quitting = "delete", true
 			return m, tea.Quit
 		case "ctrl+c", "esc", "q":
 			m.choice, m.quitting = "cancel", true
@@ -258,9 +261,10 @@ func (m existsPromptModel) View() string {
 		rebuildHint = "(recommended — updates to " + m.currentVersion + ")"
 	}
 	b.WriteString("  " + accentStyle.Render("r") + "  rebuild it " + mutedStyle.Render(rebuildHint) + "\n")
+	b.WriteString("  " + accentStyle.Render("d") + "  delete it " + mutedStyle.Render("(uninstall; asks about your data)") + "\n")
 	b.WriteString("  " + accentStyle.Render("esc") + "  cancel")
 	card := renderCard(m.width, "sandbox", mutedStyle.Render("Sandbox · already installed"), b.String())
-	return screen(m.width, m.height, card, renderFooter("o open · r rebuild · esc cancel"))
+	return screen(m.width, m.height, card, renderFooter("o open · r rebuild · d delete · esc cancel"))
 }
 
 // runSandboxExistsPrompt asks what to do about an already-built sandbox, showing
@@ -303,6 +307,18 @@ func rebuildSandboxChild(dir string) error {
 	return cmd.Run()
 }
 
+// uninstallSandboxChild runs `retoia sandbox uninstall` as a fresh child process
+// so its data-deletion confirm runs with a clean terminal.
+func uninstallSandboxChild(dir string) error {
+	exe, err := os.Executable()
+	if err != nil || exe == "" {
+		exe = "retoia"
+	}
+	cmd := exec.Command(exe, "sandbox", "uninstall", "--dir", dir)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	return cmd.Run()
+}
+
 // attachSandbox enters the running sandbox's OpenCode (forced pty so the TUI
 // renders), from the compose file in dir.
 func attachSandbox(dir string) error {
@@ -326,7 +342,9 @@ func runSandbox(hostConfig, base string) error {
 
 	// If a sandbox is already built, tell the user and let them open or rebuild it,
 	// instead of a silent detached rebuild that just returns to the shell.
-	if sandbox.DockerReady() && sandbox.ImageExists() {
+	// The scaffold must still be there too: an image left over from a deleted
+	// sandbox must not offer a rebuild that would fail with "no sandbox".
+	if sandbox.DockerReady() && sandbox.ImageExists() && scaffoldPresent(cwd) {
 		built := sandbox.ImageVersion()
 		choice, perr := runSandboxExistsPrompt(existsPromptModel{
 			running:        sandbox.ContainerUp(),
@@ -341,6 +359,8 @@ func runSandbox(hostConfig, base string) error {
 		switch choice {
 		case "open":
 			return attachSandbox(cwd)
+		case "delete":
+			return uninstallSandboxChild(cwd)
 		case "rebuild":
 			// Pick extras (MCPs + plugins), then ask for the gateway key —
 			// same as a fresh install — re-stage, and rebuild. (Keyring calls are
@@ -470,10 +490,77 @@ func runSandbox(hostConfig, base string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("building the sandbox (%s %s): %w", name, strings.Join(args, " "), err)
 	}
-	fmt.Println("\nSandbox is up. Open the Retoia agents in it with:")
-	fmt.Println("  retoia sandbox open      (or `retoia sandbox shell` for a shell)")
+	fmt.Println("\nSandbox is up. Opening the sandbox…")
+	if aerr := attachSandbox(cwd); aerr != nil {
+		fmt.Println("Could not open it automatically. Open the Retoia agents in it with:")
+		fmt.Println("  retoia sandbox open      (or `retoia sandbox shell` for a shell)")
+	}
 	fmt.Println("Your host OpenCode was not touched.")
 	return nil
+}
+
+// scaffoldPresent reports whether dir still holds the generated sandbox scaffold
+// (compose file and baked config), i.e. a rebuild has something to work from.
+func scaffoldPresent(dir string) bool {
+	if _, err := os.Stat(filepath.Join(dir, "compose.sandbox.yaml")); err != nil {
+		return false
+	}
+	st, err := os.Stat(filepath.Join(dir, "opencode-config"))
+	return err == nil && st.IsDir()
+}
+
+// confirmDataModel asks whether to also delete the persistent sandbox data.
+type confirmDataModel struct {
+	deleteData, cancelled bool
+	quitting              bool
+	width, height         int
+}
+
+func (m confirmDataModel) Init() tea.Cmd { return nil }
+
+func (m confirmDataModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width, m.height = msg.Width, msg.Height
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "y", "Y":
+			m.deleteData, m.quitting = true, true
+			return m, tea.Quit
+		case "n", "N", "enter":
+			m.quitting = true
+			return m, tea.Quit
+		case "ctrl+c", "esc", "q":
+			m.cancelled, m.quitting = true, true
+			return m, tea.Quit
+		}
+	}
+	return m, nil
+}
+
+func (m confirmDataModel) View() string {
+	if m.quitting {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(warnStyle.Render("¿Borrar también los datos persistentes del sandbox (sandbox-work/ y sandbox-data/)?") + "\n")
+	b.WriteString(mutedStyle.Render("Se pierden tu trabajo y la memoria.") + "\n\n")
+	b.WriteString("  " + accentStyle.Render("y") + "  sí, borrar todo\n")
+	b.WriteString("  " + accentStyle.Render("n") + "  no, conservar mis datos " + mutedStyle.Render("(esc)"))
+	card := renderCard(m.width, "sandbox", mutedStyle.Render("Sandbox · desinstalar"), b.String())
+	return screen(m.width, m.height, card, renderFooter("y sí · n/esc no"))
+}
+
+// ConfirmDataDeletion asks whether to also delete the persistent sandbox data
+// (sandbox-work/ + sandbox-data/). Cancelling (esc/ctrl+c) keeps the data.
+func ConfirmDataDeletion() (deleteData bool, cancelled bool, err error) {
+	final, rerr := tea.NewProgram(confirmDataModel{}, tea.WithAltScreen()).Run()
+	if rerr != nil {
+		return false, false, fmt.Errorf("running data confirm: %w", rerr)
+	}
+	restoreTerminal()
+	fm := final.(confirmDataModel)
+	return fm.deleteData, fm.cancelled, nil
 }
 
 // stageSandboxConfig generates the Retoia OpenCode config (opencode.json + skills

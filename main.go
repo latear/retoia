@@ -798,62 +798,79 @@ func cmdSandboxAttach(args []string, opencode bool) error {
 	return cmd.Run()
 }
 
-// cmdSandboxUninstall tears the sandbox down: `docker compose down` removes the
-// container and its network; --rmi also removes the retoia-sandbox image and
-// --purge deletes the generated scaffold. By default the mounted sandbox-work/
-// and sandbox-data/ are kept (the user's work and persisted state); --all also
-// removes those for a full, irreversible wipe and asks to confirm first (skip
-// the prompt with --yes).
+// uninstallDataDecision decides what to do about the persistent data
+// (sandbox-work/ + sandbox-data/): --all deletes it, --keep-data keeps it, and
+// otherwise it asks only when interactive (a TTY and no --yes). Non-interactive
+// runs never block on a prompt and keep the data.
+func uninstallDataDecision(all, keepData, yes, tty bool) (deleteData, needPrompt bool) {
+	switch {
+	case all:
+		return true, false
+	case keepData, yes, !tty:
+		return false, false
+	}
+	return false, true
+}
+
+// stdinIsTerminal reports whether stdin is an interactive terminal.
+func stdinIsTerminal() bool {
+	fi, err := os.Stdin.Stat()
+	return err == nil && fi.Mode()&os.ModeCharDevice != 0
+}
+
+// cmdSandboxUninstall always does the full teardown: `docker compose down`
+// (container + network), removes the retoia-sandbox image and purges the
+// generated scaffold. The persistent sandbox-work/ and sandbox-data/ are kept
+// unless the user confirms deleting them (TUI prompt) or passes --all.
+// --rmi/--purge are accepted for compatibility (now always implied).
 func cmdSandboxUninstall(out io.Writer, args []string) error {
 	fs := flag.NewFlagSet("sandbox uninstall", flag.ContinueOnError)
 	dir := fs.String("dir", ".", "directory holding the sandbox artifacts")
-	rmi := fs.Bool("rmi", false, "also remove the retoia-sandbox image")
-	purge := fs.Bool("purge", false, "also delete the generated scaffold (keeps sandbox-work/ and sandbox-data/)")
-	all := fs.Bool("all", false, "remove EVERYTHING, including sandbox-work/ and sandbox-data/ (your work and persisted memory/state) — irreversible, asks to confirm")
-	yes := fs.Bool("yes", false, "skip the --all confirmation prompt")
+	fs.Bool("rmi", false, "(implied) remove the retoia-sandbox image")
+	fs.Bool("purge", false, "(implied) delete the generated scaffold")
+	all := fs.Bool("all", false, "also delete sandbox-work/ and sandbox-data/ (your work and persisted memory/state) without asking — irreversible")
+	keepData := fs.Bool("keep-data", false, "keep sandbox-work/ and sandbox-data/ without asking")
+	yes := fs.Bool("yes", false, "do not prompt (keeps the data unless --all)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	// --all is the full, irreversible wipe. Gate it behind an explicit
-	// confirmation because it destroys the user's work and persisted memory;
-	// --yes skips the prompt for automation. It implies --rmi and --purge.
-	if *all {
-		if !*yes && !confirm("This removes the container, image, scaffold AND sandbox-work/ + sandbox-data/ (your work and persisted memory/state). This cannot be undone. Continue?") {
-			fmt.Fprintln(out, "cancelled, nothing removed")
-			return nil
+	deleteData, needPrompt := uninstallDataDecision(*all, *keepData, *yes, stdinIsTerminal())
+	if needPrompt {
+		del, cancelled, err := installtui.ConfirmDataDeletion()
+		if err != nil {
+			return err
 		}
-		*rmi, *purge = true, true
+		deleteData = del && !cancelled
 	}
 
 	compose := filepath.Join(*dir, "compose.sandbox.yaml")
 	if !sandbox.DockerReady() {
 		fmt.Fprintln(out, "Docker is not running — skipping container/image removal.")
-	} else if _, err := os.Stat(compose); err != nil {
-		fmt.Fprintf(out, "No compose.sandbox.yaml in %q — skipping container removal.\n", *dir)
 	} else {
-		fmt.Fprintln(out, "Stopping and removing the sandbox container…")
-		if err := runDocker(out, "compose", "-f", compose, "down"); err != nil {
-			// Non-fatal: the container may already be gone or the compose file
-			// broken — keep going so --rmi/--purge still run.
-			fmt.Fprintln(out, "  (compose down failed — container may already be removed)")
-		}
-		if *rmi {
-			fmt.Fprintln(out, "Removing the retoia-sandbox image…")
-			if err := runDocker(out, "rmi", "retoia-sandbox"); err != nil {
-				fmt.Fprintln(out, "  (image not present or still in use — skipped)")
+		if _, err := os.Stat(compose); err != nil {
+			fmt.Fprintf(out, "No compose.sandbox.yaml in %q — skipping container removal.\n", *dir)
+		} else {
+			fmt.Fprintln(out, "Stopping and removing the sandbox container…")
+			if err := runDocker(out, "compose", "-f", compose, "down"); err != nil {
+				// Non-fatal: the container may already be gone or the compose file
+				// broken — keep going so the image/scaffold removal still runs.
+				fmt.Fprintln(out, "  (compose down failed — container may already be removed)")
 			}
+		}
+		fmt.Fprintln(out, "Removing the retoia-sandbox image…")
+		if err := runDocker(out, "rmi", "retoia-sandbox"); err != nil {
+			fmt.Fprintln(out, "  (image not present or still in use — skipped)")
 		}
 	}
 
-	if *purge {
-		purgeSandboxArtifacts(out, *dir)
-		if *all {
-			fmt.Fprintln(out, "Removing sandbox-work/ and sandbox-data/ (your work and persisted memory/state)…")
-			removeSandboxData(out, *dir)
-		} else {
-			fmt.Fprintln(out, "Kept sandbox-work/ and sandbox-data/ (your work and persisted memory/state).")
-		}
+	fmt.Fprintln(out, "Removing the sandbox scaffold…")
+	purgeSandboxArtifacts(out, *dir)
+	if deleteData {
+		fmt.Fprintln(out, "Removing sandbox-work/ and sandbox-data/ (your work and persisted memory/state)…")
+		removeSandboxData(out, *dir)
+	} else {
+		fmt.Fprintln(out, "Kept sandbox-work/ and sandbox-data/ (your work and persisted memory/state).")
 	}
 
 	fmt.Fprintln(out, "Sandbox uninstall done.")

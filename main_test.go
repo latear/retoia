@@ -386,3 +386,25 @@ func TestSandboxModelsNeedsStagedConfig(t *testing.T) {
 		t.Errorf("error should mention the missing staged config; got: %v", err)
 	}
 }
+
+func TestUninstallDataDecision(t *testing.T) {
+	cases := []struct {
+		name                   string
+		all, keep, yes, tty    bool
+		wantDelete, wantPrompt bool
+	}{
+		{"interactive asks", false, false, false, true, false, true},
+		{"all deletes silently", true, false, false, true, true, false},
+		{"all beats keep", true, true, false, true, true, false},
+		{"keep-data no prompt", false, true, false, true, false, false},
+		{"yes keeps", false, false, true, true, false, false},
+		{"no tty keeps", false, false, false, false, false, false},
+		{"no tty all deletes", true, false, false, false, true, false},
+	}
+	for _, c := range cases {
+		d, p := uninstallDataDecision(c.all, c.keep, c.yes, c.tty)
+		if d != c.wantDelete || p != c.wantPrompt {
+			t.Errorf("%s: got (%v,%v), want (%v,%v)", c.name, d, p, c.wantDelete, c.wantPrompt)
+		}
+	}
+}
