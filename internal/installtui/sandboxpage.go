@@ -525,11 +525,18 @@ func stageSandboxConfig(cfgDir, hostConfig, base, serverKey string, ex sandboxEx
 	// Inherit the compatible MCP servers from the host config (npx/uvx-style or
 	// remote). Best effort — a missing/odd host config just means no inherited MCPs.
 	inheritCompatibleMCP(stageCfg, hostConfig)
+	// RETO.md is user-edited: carry an existing one across the rebuild.
+	prevReto, _ := os.ReadFile(filepath.Join(cfgDir, "RETO.md"))
 	if err := os.RemoveAll(cfgDir); err != nil {
 		return err
 	}
 	if err := copyDir(filepath.Join(stageHome, ".config", "opencode"), cfgDir); err != nil {
 		return err
+	}
+	if len(prevReto) > 0 {
+		if err := os.WriteFile(filepath.Join(cfgDir, "RETO.md"), prevReto, 0o644); err != nil {
+			return err
+		}
 	}
 	// Fix baked absolute paths: the staging wrote the logo plugin (and registered
 	// it) under the throwaway stage HOME, which does not exist inside the

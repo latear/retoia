@@ -131,6 +131,18 @@ func (m summaryModel) View() string {
 		b.WriteString("\n")
 	}
 
+	// Reto onboarding docs.
+	if r.onboardingSkipReason != "" {
+		b.WriteString(bullet(false, "Onboarding", warnStyle.Render(r.onboardingSkipReason)))
+	} else {
+		v := "RETO.md rules + AGENTS.md protocol"
+		if !r.onboardingWroteReto {
+			v += mutedStyle.Render(" (existing RETO.md kept)")
+		}
+		b.WriteString(bullet(true, "Onboarding", v))
+	}
+	b.WriteString("\n")
+
 	// OpenCode sidebar plugins.
 	if len(r.tuiPluginsAdded) > 0 {
 		b.WriteString(bullet(true, "Sidebar", fmt.Sprintf("added %d plugin(s)", len(r.tuiPluginsAdded))+mutedStyle.Render(" → "+r.tuiPluginsPath)))

@@ -140,6 +140,10 @@ type applyResult struct {
 	engramInstalledNow bool   // engram was installed during this run (via brew)
 	engramSkipReason   string // set when chosen but engram could not be installed/found
 
+	onboardingWroteReto  bool   // RETO.md was created (it is never overwritten)
+	onboardingAgents     bool   // the AGENTS.md onboarding block was written/refreshed
+	onboardingSkipReason string // set when the onboarding docs could not be written
+
 	keepCurrent bool
 	keyStored   bool
 	storedCount int
@@ -390,6 +394,14 @@ func apply(configPath, providerID, base string, setup setupResult, key keyResult
 		if _, perr := installer.ConfigureTUIPlugins(filepath.Join(configDir, "tui.json"), []string{logoPath}); perr == nil {
 			res.logoInstalled = true
 		}
+	}
+
+	// Onboarding docs (RETO.md rules + AGENTS.md protocol). Non-fatal: a write
+	// failure degrades to a skip reason.
+	wroteReto, agents, oerr := installer.WriteOnboardingDocs(configDir)
+	res.onboardingWroteReto, res.onboardingAgents = wroteReto, agents
+	if oerr != nil {
+		res.onboardingSkipReason = oerr.Error()
 	}
 
 	return res, nil

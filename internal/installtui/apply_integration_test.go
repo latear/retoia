@@ -152,3 +152,30 @@ func TestDefaultModelID(t *testing.T) {
 		t.Errorf("auto preference = %q, want auto", got)
 	}
 }
+
+func TestApplyWritesOnboardingDocs(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("OPENCODE_AUTH_PATH", filepath.Join(home, "auth.json"))
+	t.Setenv("RETOIA_API_KEY", "sk-fresh")
+	cfg := filepath.Join(home, ".config", "opencode", "opencode.json")
+	key := keyResult{models: []config.Model{{ID: "model-a", Name: "Orca"}}}
+
+	res, err := apply(cfg, "retoia", "https://gateway.example/v1", setupResult{}, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.onboardingWroteReto || !res.onboardingAgents || res.onboardingSkipReason != "" {
+		t.Errorf("onboarding result = %+v", res)
+	}
+	dir := filepath.Dir(cfg)
+	for _, f := range []string{"RETO.md", "AGENTS.md"} {
+		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
+			t.Errorf("%s not written: %v", f, err)
+		}
+	}
+	v := summaryModel{res: res, width: 160, height: 60}.View()
+	if !strings.Contains(v, "Onboarding") {
+		t.Errorf("summary missing Onboarding:\n%s", v)
+	}
+}
