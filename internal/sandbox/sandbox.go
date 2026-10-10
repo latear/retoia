@@ -248,9 +248,11 @@ fully ephemeral sandbox. Treat sandbox-data/ as sensitive: it holds credentials.
     retoia sandbox uninstall            # docker compose down (stop + remove container)
     retoia sandbox uninstall --rmi      # also remove the retoia-sandbox image
     retoia sandbox uninstall --purge    # also delete this scaffold (keeps sandbox-work/ and sandbox-data/)
+    retoia sandbox uninstall --all      # remove EVERYTHING incl. your work + memory (asks to confirm; --yes skips)
 
-sandbox-work/ and sandbox-data/ are always kept — they hold your work and your
-persisted memory/state. Delete them by hand if you really want them gone.
+By default sandbox-work/ and sandbox-data/ are kept — they hold your work and
+your persisted memory/state. --all is the only command that deletes them, and
+it asks for confirmation first.
 
 ## Notes
 

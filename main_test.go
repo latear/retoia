@@ -346,6 +346,34 @@ func TestPurgeSandboxArtifacts(t *testing.T) {
 	}
 }
 
+// TestRemoveSandboxData verifies the full-wipe helper deletes both the mounted
+// work dir and the persisted memory/state dir (used by `uninstall --all`).
+func TestRemoveSandboxData(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "sandbox-work"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sandbox-work", "loot.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "sandbox-data", "engram"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sandbox-data", "engram", "engram.db"), []byte("m"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	removed := removeSandboxData(io.Discard, dir)
+	if len(removed) != 2 {
+		t.Errorf("removed %d, want 2: %v", len(removed), removed)
+	}
+	for _, n := range []string{"sandbox-work", "sandbox-data"} {
+		if _, err := os.Stat(filepath.Join(dir, n)); !os.IsNotExist(err) {
+			t.Errorf("%s should have been removed", n)
+		}
+	}
+}
+
 // TestSandboxModelsNeedsStagedConfig verifies `sandbox models` fails clearly when
 // the sandbox has not been generated yet (no opencode-config/opencode.json).
 func TestSandboxModelsNeedsStagedConfig(t *testing.T) {

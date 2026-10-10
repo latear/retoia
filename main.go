@@ -706,10 +706,12 @@ func cmdSandbox(out io.Writer, args []string) error {
 // plain progress output — a terminal-agnostic path that avoids the install
 // wizard's full-screen handoff (which can render as a blank over some SSH
 // terminals). It refreshes the Docker scaffold in place and keeps the already
-// baked Retoia config (a full config refresh needs a re-install).
+// baked Retoia config (a full config refresh needs a re-install). On success it
+// opens the sandbox straight away (pass --no-open to just rebuild).
 func cmdSandboxRebuild(out io.Writer, args []string) error {
 	fs := flag.NewFlagSet("sandbox rebuild", flag.ContinueOnError)
 	dir := fs.String("dir", ".", "directory holding the sandbox artifacts")
+	noOpen := fs.Bool("no-open", false, "do not open the sandbox after rebuilding")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -740,8 +742,12 @@ func cmdSandboxRebuild(out io.Writer, args []string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("rebuilding the sandbox (%s %s): %w", name, strings.Join(bargs, " "), err)
 	}
-	fmt.Fprintln(out, "\nSandbox rebuilt. Open it with: retoia sandbox open")
-	return nil
+	if *noOpen {
+		fmt.Fprintln(out, "\nSandbox rebuilt. Open it with: retoia sandbox open")
+		return nil
+	}
+	fmt.Fprintln(out, "\nSandbox rebuilt — opening it…")
+	return cmdSandboxAttach([]string{"--dir", *dir}, true)
 }
 
 func cmdSandboxInit(out io.Writer, args []string) error {
@@ -794,15 +800,30 @@ func cmdSandboxAttach(args []string, opencode bool) error {
 
 // cmdSandboxUninstall tears the sandbox down: `docker compose down` removes the
 // container and its network; --rmi also removes the retoia-sandbox image and
-// --purge deletes the generated scaffold. The mounted sandbox-work/ and
-// sandbox-data/ are always kept — they hold the user's work and persisted state.
+// --purge deletes the generated scaffold. By default the mounted sandbox-work/
+// and sandbox-data/ are kept (the user's work and persisted state); --all also
+// removes those for a full, irreversible wipe and asks to confirm first (skip
+// the prompt with --yes).
 func cmdSandboxUninstall(out io.Writer, args []string) error {
 	fs := flag.NewFlagSet("sandbox uninstall", flag.ContinueOnError)
 	dir := fs.String("dir", ".", "directory holding the sandbox artifacts")
 	rmi := fs.Bool("rmi", false, "also remove the retoia-sandbox image")
 	purge := fs.Bool("purge", false, "also delete the generated scaffold (keeps sandbox-work/ and sandbox-data/)")
+	all := fs.Bool("all", false, "remove EVERYTHING, including sandbox-work/ and sandbox-data/ (your work and persisted memory/state) — irreversible, asks to confirm")
+	yes := fs.Bool("yes", false, "skip the --all confirmation prompt")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+
+	// --all is the full, irreversible wipe. Gate it behind an explicit
+	// confirmation because it destroys the user's work and persisted memory;
+	// --yes skips the prompt for automation. It implies --rmi and --purge.
+	if *all {
+		if !*yes && !confirm("This removes the container, image, scaffold AND sandbox-work/ + sandbox-data/ (your work and persisted memory/state). This cannot be undone. Continue?") {
+			fmt.Fprintln(out, "cancelled, nothing removed")
+			return nil
+		}
+		*rmi, *purge = true, true
 	}
 
 	compose := filepath.Join(*dir, "compose.sandbox.yaml")
@@ -827,7 +848,12 @@ func cmdSandboxUninstall(out io.Writer, args []string) error {
 
 	if *purge {
 		purgeSandboxArtifacts(out, *dir)
-		fmt.Fprintln(out, "Kept sandbox-work/ and sandbox-data/ (your work and persisted memory/state).")
+		if *all {
+			fmt.Fprintln(out, "Removing sandbox-work/ and sandbox-data/ (your work and persisted memory/state)…")
+			removeSandboxData(out, *dir)
+		} else {
+			fmt.Fprintln(out, "Kept sandbox-work/ and sandbox-data/ (your work and persisted memory/state).")
+		}
 	}
 
 	fmt.Fprintln(out, "Sandbox uninstall done.")
@@ -898,6 +924,26 @@ func purgeSandboxArtifacts(out io.Writer, dir string) []string {
 		p := filepath.Join(dir, n)
 		if _, err := os.Stat(p); err != nil {
 			continue // not there, nothing to remove
+		}
+		if err := os.RemoveAll(p); err != nil {
+			fmt.Fprintf(out, "  could not remove %s: %v\n", n, err)
+			continue
+		}
+		fmt.Fprintln(out, "  removed "+n)
+		removed = append(removed, n)
+	}
+	return removed
+}
+
+// removeSandboxData deletes the user's mounted work dir and persisted memory/state
+// (sandbox-work/ and sandbox-data/). This is destructive and irreversible, so it
+// is only reached from `uninstall --all` behind an explicit confirmation.
+func removeSandboxData(out io.Writer, dir string) []string {
+	var removed []string
+	for _, n := range []string{"sandbox-work", "sandbox-data"} {
+		p := filepath.Join(dir, n)
+		if _, err := os.Stat(p); err != nil {
+			continue
 		}
 		if err := os.RemoveAll(p); err != nil {
 			fmt.Fprintf(out, "  could not remove %s: %v\n", n, err)
