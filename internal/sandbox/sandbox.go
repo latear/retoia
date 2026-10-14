@@ -167,6 +167,13 @@ services:
     stop_grace_period: 3s
     environment:
       RETOIA_API_KEY: "${RETOIA_API_KEY:-}"
+      # Pin lock: OpenCode self-updates to the latest release on startup by
+      # default, which would silently drift off the version pinned in
+      # Dockerfile.sandbox (the V2 HTTP API the orchestration targets changes
+      # between releases). Disable it so the baked version actually holds; bump
+      # the Dockerfile pin deliberately to upgrade. Also set "autoupdate": false
+      # in the baked opencode.json (belt and suspenders).
+      OPENCODE_DISABLE_AUTOUPDATE: "1"
     volumes:
       - ./sandbox-work:/work
 `

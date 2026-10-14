@@ -638,6 +638,13 @@ func stageSandboxConfig(cfgDir, hostConfig, base, serverKey string, ex sandboxEx
 			}
 		}
 	}
+	// Pin lock: disable OpenCode's startup self-update so the version baked by
+	// Dockerfile.sandbox actually holds (the compose file also sets
+	// OPENCODE_DISABLE_AUTOUPDATE). Without this OpenCode drifts to the latest
+	// release on launch, past the pinned V2 API shape the orchestration targets.
+	if err := installer.SetAutoupdate(filepath.Join(cfgDir, "opencode.json"), false); err != nil {
+		return fmt.Errorf("locking the sandbox OpenCode version (autoupdate off): %w", err)
+	}
 	return nil
 }
 

@@ -104,6 +104,11 @@ func TestComposePersistMounts(t *testing.T) {
 	if !strings.Contains(off, "./sandbox-work:/work") || !strings.Contains(on, "./sandbox-work:/work") {
 		t.Error("both modes must keep the ./sandbox-work:/work mount")
 	}
+	// Pin lock: both modes must disable OpenCode's startup self-update so the
+	// Dockerfile-pinned version holds.
+	if !strings.Contains(on, "OPENCODE_DISABLE_AUTOUPDATE") || !strings.Contains(off, "OPENCODE_DISABLE_AUTOUPDATE") {
+		t.Error("compose should set OPENCODE_DISABLE_AUTOUPDATE so the version pin holds")
+	}
 	dir := t.TempDir()
 	if _, err := Write(dir, true); err != nil {
 		t.Fatal(err)
