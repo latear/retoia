@@ -38,6 +38,7 @@ root and other paths → `302` to `HOME_URL`.
 
 - `GET /retoia/manifest.json` — `{version, platforms{<os>_<arch>:{url,sha256,sig}}}`
 - `GET /retoia/dl/<asset>` — the release asset bytes
+- `GET /install` (also `/install.sh`) — the repo's `install.sh`, unauthenticated (the binary download it performs is what is key-gated): `curl -fsSL https://cli.retoia.app/install | bash`
 - `GET /healthz` — unauthenticated liveness
 
 ## Token scopes

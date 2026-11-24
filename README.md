@@ -49,11 +49,13 @@ config untouched.
 
 ```bash
 # macOS / Linux / WSL
-curl -fsSL https://raw.githubusercontent.com/latear/retoia/main/install.sh | bash
+curl -fsSL https://cli.retoia.app/install | bash
 ```
 
-The script downloads the release binary for your OS/arch, puts `retoia` on your
-`PATH`, and launches `retoia install`.
+The script downloads the release binary for your OS/arch from `cli.retoia.app`
+(gated by your gateway server key; no GitHub access or `gh` needed), puts
+`retoia` on your `PATH`, and launches `retoia install`. It reads the key from
+`$RETOIA_API_KEY` or prompts for it.
 
 ## Commands
 

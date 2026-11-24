@@ -1,31 +1,33 @@
 #!/usr/bin/env bash
-# Instalador de retoia. Por defecto DESCARGA el binario prearmado del último
-# release de GitHub (no requiere Go): las skills se descargan por separado, no viajan dentro del binario.
+# Instalador de retoia. Por defecto DESCARGA el binario prearmado (no requiere
+# Go ni GitHub): lo baja de cli.retoia.app, protegido por tu server key.
 # Lo deja en ~/.local/bin y abre el instalador interactivo (retoia install).
 #
+# Una línea:
+#   curl -fsSL https://cli.retoia.app/install | bash
+#
+# La server key sale de $RETOIA_API_KEY; si no está, te la pide por la terminal.
+# No hace falta gh ni acceso al repo de GitHub.
+#
 # Uso:
-#   ./install.sh                 # baja el binario del release y abre el instalador
-#   ./install.sh --version vX.Y.Z  # baja una versión concreta (default: la última)
-#   ./install.sh --build         # compila desde fuente (para desarrollo; requiere el repo + Go)
+#   ./install.sh                 # baja el binario y abre el instalador
+#   ./install.sh --build         # compila desde fuente (desarrollo; requiere el repo + Go)
+#   ./install.sh --version vX.Y.Z  # solo aplica a --build; la descarga siempre es la última
 #
-# El repo es privado, así que la descarga usa `gh` (GitHub CLI) para autenticar.
-#   - Instalá gh: https://cli.github.com  y logueate: gh auth login
-#   - O exportá GH_TOKEN / GITHUB_TOKEN con un token que pueda leer el release.
-#
-# Una línea (con gh ya autenticado):
-#   curl -fsSL https://raw.githubusercontent.com/latear/retoia/main/install.sh | bash
+# Variables:
+#   RETOIA_API_KEY      server key (sk-...)
+#   RETOIA_UPDATE_BASE  base del servidor de updates (default https://cli.retoia.app)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-REPO="latear/retoia"
 BIN="retoia"
 DEST_DIR="$HOME/.local/bin"
 DEST="$DEST_DIR/$BIN"
 STALE_BIN="$DEST_DIR/retoia-models"
 
 MODE="download"   # download | build
-VERSION=""        # vacío = último release
+VERSION=""        # solo informativo; la descarga siempre es la última
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -56,53 +58,104 @@ detect_platform() {
     arm64|aarch64) arch="arm64" ;;
     *) echo "Arquitectura no soportada: $(uname -m). Usá --build si tenés Go." >&2; exit 1 ;;
   esac
+  PLAT="${os}_${arch}"
   ASSET="${BIN}_${os}_${arch}.tar.gz"
 }
 
-# verify_checksum comprueba el asset contra checksums.txt cuando hay herramienta
-# disponible; si no hay, avisa y sigue (no bloquea la instalación).
-verify_checksum() {
-  local dir="$1" asset="$2"
-  [ -f "$dir/checksums.txt" ] || { echo "  (sin checksums.txt; salteo la verificación)"; return 0; }
+# verify_sha256 compara el sha256 de un archivo con el valor esperado; si no hay
+# herramienta o valor, avisa y sigue (no bloquea la instalación).
+verify_sha256() {
+  local file="$1" want="$2"
+  [ -n "$want" ] || { echo "  (el manifest no trae sha256; salteo la verificación)"; return 0; }
 
   local tool
   if command -v sha256sum >/dev/null 2>&1; then tool="sha256sum"
   elif command -v shasum >/dev/null 2>&1; then tool="shasum -a 256"
   else echo "  (sin sha256sum/shasum; salteo la verificación)"; return 0; fi
 
-  local want got
-  want="$(grep " $asset\$" "$dir/checksums.txt" | awk '{print $1}')"
-  [ -n "$want" ] || { echo "  (el asset no figura en checksums.txt; salteo)"; return 0; }
-  got="$( $tool "$dir/$asset" | awk '{print $1}')"
+  local got
+  got="$($tool "$file" | awk '{print $1}')"
   if [ "$want" != "$got" ]; then
-    echo "ERROR: checksum no coincide para $asset" >&2
+    echo "ERROR: checksum no coincide para $(basename "$file")" >&2
     exit 1
   fi
   echo "  checksum OK"
 }
 
-download_binary() {
-  command -v gh >/dev/null 2>&1 || {
-    echo "Necesito 'gh' (GitHub CLI) para bajar el release de un repo privado." >&2
-    echo "  Instalá: https://cli.github.com  y logueate con: gh auth login" >&2
-    echo "  O corré ./install.sh --build para compilar desde fuente (requiere Go)." >&2
+# resolve_key deja la server key en KEY: primero $RETOIA_API_KEY, si no la pide
+# por la terminal (funciona bajo `curl | bash` leyendo de /dev/tty).
+resolve_key() {
+  KEY="${RETOIA_API_KEY:-}"
+  KEY="$(printf '%s' "$KEY" | tr -d '[:space:]')"
+  if [ -z "$KEY" ]; then
+    if [ -r /dev/tty ] && [ -w /dev/tty ]; then
+      printf 'Pegá tu server key (sk-...): ' >&2
+      read -r KEY < /dev/tty || KEY=""
+      KEY="$(printf '%s' "$KEY" | tr -d '[:space:]')"
+    fi
+  fi
+  [ -n "$KEY" ] || {
+    echo "Necesito tu server key: definí RETOIA_API_KEY o corré el instalador de forma interactiva." >&2
     exit 1
   }
+}
 
+# manifest_field imprime un campo ($2) de la plataforma $PLAT del manifest JSON ($1).
+manifest_field() {
+  local json="$1" field="$2"
+  if command -v python3 >/dev/null 2>&1; then
+    printf '%s' "$json" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    print(d["platforms"][sys.argv[1]].get(sys.argv[2], ""))
+except Exception:
+    pass
+' "$PLAT" "$field" 2>/dev/null || true
+  else
+    # Fallback sin python3: asume el JSON compacto/pretty de la plataforma.
+    printf '%s' "$json" | tr -d '\n' \
+      | sed -n "s/.*\"$PLAT\"[[:space:]]*:[[:space:]]*{\([^}]*\)}.*/\1/p" \
+      | sed -n "s/.*\"$field\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p"
+  fi
+}
+
+download_binary() {
   detect_platform
+  resolve_key
+
+  local base="${RETOIA_UPDATE_BASE:-https://cli.retoia.app}"
+  base="${base%/}"
+
+  if [ -n "$VERSION" ]; then
+    echo "Nota: la descarga por el gateway solo ofrece la última versión; ignoro --version $VERSION (usá --build para una versión concreta)." >&2
+  fi
+
   local tmp
   tmp="$(mktemp -d)"
   trap 'rm -rf "$tmp"' RETURN
 
-  local ref="${VERSION:-último release}"
-  echo "Bajando $ASSET ($ref) de $REPO ..."
+  echo "Consultando $base ..."
+  local code manifest
+  code="$(curl -sS -o "$tmp/manifest.json" -w '%{http_code}' -H "Authorization: Bearer $KEY" "$base/retoia/manifest.json" 2>/dev/null || true)"
+  case "$code" in
+    200) manifest="$(cat "$tmp/manifest.json")" ;;
+    401) echo "ERROR: tu server key fue rechazada (401) — revisá que sea válida y que empiece con sk-" >&2; exit 1 ;;
+    000|"") echo "ERROR: no pude contactar $base" >&2; exit 1 ;;
+    *) echo "ERROR: $base respondió HTTP $code al pedir el manifest." >&2; exit 1 ;;
+  esac
 
-  local args=(release download --repo "$REPO" --pattern "$ASSET" --pattern "checksums.txt" --dir "$tmp" --clobber)
-  [ -n "$VERSION" ] && args=(release download "$VERSION" --repo "$REPO" --pattern "$ASSET" --pattern "checksums.txt" --dir "$tmp" --clobber)
-  gh "${args[@]}"
+  local want
+  want="$(manifest_field "$manifest" sha256)"
 
-  [ -f "$tmp/$ASSET" ] || { echo "No se descargó $ASSET (¿existe ese asset en el release?)." >&2; exit 1; }
-  verify_checksum "$tmp" "$ASSET"
+  echo "Bajando $ASSET ..."
+  curl -fsSL -H "Authorization: Bearer $KEY" "$base/retoia/dl/$ASSET" -o "$tmp/$ASSET" || {
+    echo "ERROR: no pude bajar $ASSET desde $base (¿existe para $PLAT?)." >&2
+    exit 1
+  }
+
+  [ -f "$tmp/$ASSET" ] || { echo "No se descargó $ASSET." >&2; exit 1; }
+  verify_sha256 "$tmp/$ASSET" "$want"
 
   tar -xzf "$tmp/$ASSET" -C "$tmp"
   # The tarball wraps its contents in a retoia/ folder.
@@ -171,7 +224,15 @@ post_install() {
 launch_tui() {
   echo
   echo "Lanzando el instalador interactivo (retoia install) ..."
-  if command -v "$BIN" >/dev/null 2>&1; then "$BIN" install; else "$DEST" install; fi
+  local exe="$DEST"
+  command -v "$BIN" >/dev/null 2>&1 && exe="$BIN"
+  # Pasamos la key por env para no pedirla dos veces; /dev/tty hace que el TUI
+  # funcione aunque el script venga por `curl | bash`.
+  if [ -r /dev/tty ] && [ -w /dev/tty ]; then
+    RETOIA_API_KEY="${KEY:-${RETOIA_API_KEY:-}}" "$exe" install < /dev/tty
+  else
+    RETOIA_API_KEY="${KEY:-${RETOIA_API_KEY:-}}" "$exe" install
+  fi
 }
 
 case "$MODE" in

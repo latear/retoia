@@ -26,6 +26,9 @@ for real tamper protection** (below).
 ## Server contract (what the middleware must serve)
 
 All requests carry `Authorization: Bearer <gateway key>`; reject anything else.
+The one exception is `GET /install` (also `/install.sh`), which serves the repo's
+`install.sh` unauthenticated so `curl -fsSL https://cli.retoia.app/install | bash`
+works; the binary download it performs stays key-gated.
 
 `GET /retoia/manifest.json`:
 

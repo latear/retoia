@@ -8,6 +8,11 @@
 //	GET /retoia/manifest.json  -> {version, platforms{<os>_<arch>:{url,sha256,sig}}}
 //	GET /retoia/dl/<asset>     -> the release asset bytes
 //
+// It also serves the repo's install.sh, unauthenticated (the script is not
+// secret; the binary download it performs is what is gated):
+//
+//	GET /install (or /install.sh)  -> install.sh, text/plain
+//
 // Auth is validated against LiteLLM (LITELLM_URL) and/or a static allowlist
 // (UPDATE_KEYS); the server refuses to start with neither. It holds no signing
 // key — signatures, when present, are read from sibling "<asset>.sig" release
@@ -44,6 +49,8 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/retoia/manifest.json", srv.handleManifest)
 	mux.HandleFunc("/retoia/dl/", srv.handleDownload)
+	mux.HandleFunc("/install", srv.handleInstall)
+	mux.HandleFunc("/install.sh", srv.handleInstall)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { io.WriteString(w, "ok") })
 
 	log.Printf("retoia-update-server listening on %s (repo %s)", srv.addr, srv.repo)
@@ -55,6 +62,7 @@ type server struct {
 	repo       string
 	token      string
 	publicBase string
+	apiBase    string // GitHub API base (overridable in tests)
 	litellmURL string
 	keys       []string
 	client     *http.Client
@@ -71,6 +79,7 @@ func newServer() (*server, error) {
 		token:      os.Getenv("GITHUB_TOKEN"),
 		publicBase: strings.TrimRight(os.Getenv("PUBLIC_BASE"), "/"),
 		litellmURL: strings.TrimRight(os.Getenv("LITELLM_URL"), "/"),
+		apiBase:    "https://api.github.com",
 		client:     &http.Client{Timeout: 60 * time.Second},
 	}
 	if s.token == "" {
@@ -156,7 +165,7 @@ func (s *server) latestRelease() (*release, error) {
 	if s.cached != nil && time.Since(s.cachAt) < 60*time.Second {
 		return s.cached, nil
 	}
-	req, _ := http.NewRequest(http.MethodGet, "https://api.github.com/repos/"+s.repo+"/releases/latest", nil)
+	req, _ := http.NewRequest(http.MethodGet, s.apiBase+"/repos/"+s.repo+"/releases/latest", nil)
 	req.Header.Set("Authorization", "token "+s.token)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	resp, err := s.client.Do(req)
@@ -283,6 +292,40 @@ func (s *server) handleDownload(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Write(data)
+}
+
+// handleInstall serves the repo's install.sh via the GitHub API using the
+// server's token. It is unauthenticated on purpose: the script is not secret.
+func (s *server) handleInstall(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	req, err := http.NewRequest(http.MethodGet, s.apiBase+"/repos/"+s.repo+"/contents/install.sh?ref=main", nil)
+	if err != nil {
+		http.Error(w, "could not fetch installer", http.StatusBadGateway)
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+s.token)
+	req.Header.Set("Accept", "application/vnd.github.raw")
+	req.Header.Set("User-Agent", "retoia-worker")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		http.Error(w, "could not fetch installer", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		http.Error(w, fmt.Sprintf("could not fetch installer (upstream %d)", resp.StatusCode), http.StatusBadGateway)
+		return
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		http.Error(w, "could not fetch installer", http.StatusBadGateway)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write(body)
 }
 
 // platformKey maps a release asset filename such as

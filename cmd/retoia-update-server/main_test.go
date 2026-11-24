@@ -68,3 +68,32 @@ func TestAuthorizeRejectsWithoutKey(t *testing.T) {
 		t.Error("authorize should accept an allowlisted key")
 	}
 }
+
+func TestHandleInstallServesScriptUnauthenticated(t *testing.T) {
+	gh := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/repos/o/r/contents/install.sh" || r.URL.Query().Get("ref") != "main" ||
+			r.Header.Get("Authorization") != "Bearer tok" {
+			http.Error(w, "bad", http.StatusNotFound)
+			return
+		}
+		w.Write([]byte("#!/usr/bin/env bash\necho hi\n"))
+	}))
+	defer gh.Close()
+
+	s := &server{repo: "o/r", token: "tok", apiBase: gh.URL, client: gh.Client(), keys: []string{"sk-good"}}
+	rec := httptest.NewRecorder()
+	s.handleInstall(rec, httptest.NewRequest(http.MethodGet, "/install", nil)) // no Authorization header
+	if rec.Code != http.StatusOK || rec.Body.String() != "#!/usr/bin/env bash\necho hi\n" {
+		t.Fatalf("got %d %q", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "text/plain; charset=utf-8" {
+		t.Fatalf("content-type = %q", ct)
+	}
+
+	s.repo = "missing/repo"
+	rec = httptest.NewRecorder()
+	s.handleInstall(rec, httptest.NewRequest(http.MethodGet, "/install.sh", nil))
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("upstream failure: got %d, want 502", rec.Code)
+	}
+}

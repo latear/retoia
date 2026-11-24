@@ -6,6 +6,7 @@
 //
 //   GET /retoia/manifest.json  -> {version, platforms{<os>_<arch>:{url,sha256,sig}}}
 //   GET /retoia/dl/<asset>     -> the release asset bytes
+//   GET /install (/install.sh) -> the repo's install.sh (UNAUTHENTICATED)
 //
 // Auth: a request's `Authorization: Bearer <key>` is accepted when it is in the
 // UPDATE_KEYS allowlist OR (if LITELLM_URL is set) when LiteLLM accepts it — so
@@ -25,6 +26,14 @@ export default {
 	async fetch(request, env) {
 		const path = new URL(request.url).pathname;
 		if (path === "/healthz") return new Response("ok\n");
+		// The installer script is not secret (the binary download it performs is
+		// what is gated), so it is served unauthenticated.
+		if (
+			(path === "/install" || path === "/install.sh") &&
+			(request.method === "GET" || request.method === "HEAD")
+		) {
+			return await installScript(env);
+		}
 
 		const isAPI =
 			path === "/retoia/manifest.json" || path.startsWith("/retoia/dl/");
@@ -79,6 +88,34 @@ async function authReason(key, env) {
 		return "no auth source configured (set LITELLM_URL or UPDATE_KEYS secret)";
 	}
 	return "key not accepted";
+}
+
+// installScript returns the repo's install.sh (fetched with the worker's token)
+// as text/plain so `curl -fsSL https://cli.retoia.app/install | bash` works.
+async function installScript(env) {
+	const headers = { "content-type": "text/plain; charset=utf-8" };
+	try {
+		const repo = env.GITHUB_REPO || "latear/retoia";
+		const r = await fetch(`${GH}/repos/${repo}/contents/install.sh?ref=main`, {
+			headers: {
+				Authorization: "Bearer " + env.GITHUB_TOKEN,
+				Accept: "application/vnd.github.raw",
+				"User-Agent": "retoia-worker",
+			},
+		});
+		if (!r.ok) {
+			return new Response(`could not fetch installer (upstream ${r.status})\n`, {
+				status: 502,
+				headers,
+			});
+		}
+		return new Response(await r.text(), { status: 200, headers });
+	} catch (e) {
+		return new Response("could not fetch installer: " + e.message + "\n", {
+			status: 502,
+			headers,
+		});
+	}
 }
 
 function ghHeaders(env) {

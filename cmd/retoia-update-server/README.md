@@ -39,6 +39,7 @@ It serves:
 
 - `GET /retoia/manifest.json` — the signed manifest (Bearer-authed).
 - `GET /retoia/dl/<asset>` — a release asset (Bearer-authed).
+- `GET /install` (also `/install.sh`) — the repo's `install.sh`, unauthenticated.
 - `GET /healthz` — unauthenticated liveness.
 
 Put it behind the same TLS front door as the gateway (so the client reaches it
