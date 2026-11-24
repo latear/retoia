@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Instalador de retoia. Por defecto DESCARGA el binario prearmado (no requiere
-# Go ni GitHub): lo baja de cli.retoia.app, protegido por tu server key.
+# Go ni GitHub): lo baja de cli.retoia.app.
 # Lo deja en ~/.local/bin y abre el instalador interactivo (retoia install).
 #
 # Una línea:
 #   curl -fsSL https://cli.retoia.app/install | bash
 #
-# La server key sale de $RETOIA_API_KEY; si no está, te la pide por la terminal.
+# La clave de acceso sale de $RETOIA_API_KEY; si no está, te la pide por la terminal.
 # No hace falta gh ni acceso al repo de GitHub.
 #
 # Uso:
@@ -15,7 +15,7 @@
 #   ./install.sh --version vX.Y.Z  # solo aplica a --build; la descarga siempre es la última
 #
 # Variables:
-#   RETOIA_API_KEY      server key (sk-...)
+#   RETOIA_API_KEY      tu clave de acceso
 #   RETOIA_UPDATE_BASE  base del servidor de updates (default https://cli.retoia.app)
 set -euo pipefail
 
@@ -82,20 +82,20 @@ verify_sha256() {
   echo "  checksum OK"
 }
 
-# resolve_key deja la server key en KEY: primero $RETOIA_API_KEY, si no la pide
+# resolve_key deja la clave de acceso en KEY: primero $RETOIA_API_KEY, si no la pide
 # por la terminal (funciona bajo `curl | bash` leyendo de /dev/tty).
 resolve_key() {
   KEY="${RETOIA_API_KEY:-}"
   KEY="$(printf '%s' "$KEY" | tr -d '[:space:]')"
   if [ -z "$KEY" ]; then
     if [ -r /dev/tty ] && [ -w /dev/tty ]; then
-      printf 'Pegá tu server key (sk-...): ' >&2
+      printf 'Pegá tu clave de acceso: ' >&2
       read -r KEY < /dev/tty || KEY=""
       KEY="$(printf '%s' "$KEY" | tr -d '[:space:]')"
     fi
   fi
   [ -n "$KEY" ] || {
-    echo "Necesito tu server key: definí RETOIA_API_KEY o corré el instalador de forma interactiva." >&2
+    echo "Necesito tu clave de acceso: definí RETOIA_API_KEY o corré el instalador de forma interactiva." >&2
     exit 1
   }
 }
@@ -140,7 +140,7 @@ download_binary() {
   code="$(curl -sS -o "$tmp/manifest.json" -w '%{http_code}' -H "Authorization: Bearer $KEY" "$base/retoia/manifest.json" 2>/dev/null || true)"
   case "$code" in
     200) manifest="$(cat "$tmp/manifest.json")" ;;
-    401) echo "ERROR: tu server key fue rechazada (401) — revisá que sea válida y que empiece con sk-" >&2; exit 1 ;;
+    401) echo "ERROR: tu clave de acceso fue rechazada (401) — revisá que sea la correcta." >&2; exit 1 ;;
     000|"") echo "ERROR: no pude contactar $base" >&2; exit 1 ;;
     *) echo "ERROR: $base respondió HTTP $code al pedir el manifest." >&2; exit 1 ;;
   esac
