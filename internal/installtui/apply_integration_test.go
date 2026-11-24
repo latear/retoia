@@ -46,6 +46,9 @@ func TestApplyInstallFreshConfig(t *testing.T) {
 	if got := gjson.GetBytes(data, "agent.retoia.mode").String(); got != "primary" {
 		t.Errorf("agent.retoia.mode = %q, want primary", got)
 	}
+	if gjson.GetBytes(data, "agent.retoia.prompt").String() == "" {
+		t.Error("agent.retoia.prompt is empty, want the onboarding prompt")
+	}
 	if got := gjson.GetBytes(data, "agent.retoia.model").String(); got != "retoia/model-a" {
 		t.Errorf("agent.retoia.model = %q, want retoia/model-a", got)
 	}

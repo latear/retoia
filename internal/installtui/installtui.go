@@ -261,7 +261,7 @@ func apply(configPath, providerID, base string, setup setupResult, key keyResult
 		// Seed the single principal agent on the default model.
 		if modelID := defaultModelID(key.models); modelID != "" {
 			if err := installer.AddAgent(configPath, installer.PrincipalAgentName, "primary",
-				"Reto IA — principal agent.", providerID, modelID); err != nil {
+				"Reto IA — principal agent.", providerID, modelID, installer.PrincipalAgentPrompt); err != nil {
 				return res, fmt.Errorf("seeding principal agent: %w", err)
 			}
 		}

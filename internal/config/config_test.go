@@ -147,7 +147,7 @@ func TestSetAgent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := SetAgent(path, "retoia", "primary", "Reto IA — principal agent.", "retoia", "auto"); err != nil {
+	if err := SetAgent(path, "retoia", "primary", "Reto IA — principal agent.", "retoia", "auto", "PROMPT"); err != nil {
 		t.Fatalf("SetAgent() error = %v", err)
 	}
 	data, _ := os.ReadFile(path)
@@ -158,6 +158,7 @@ func TestSetAgent(t *testing.T) {
 		"agent.retoia.mode":        "primary",
 		"agent.retoia.description": "Reto IA — principal agent.",
 		"agent.retoia.model":       "retoia/auto",
+		"agent.retoia.prompt":      "PROMPT",
 	} {
 		if got := gjson.GetBytes(data, p).String(); got != want {
 			t.Errorf("%s = %q, want %q", p, got, want)
@@ -170,13 +171,26 @@ func TestSetAgent(t *testing.T) {
 		t.Errorf("backup missing or differs: %v", err)
 	}
 
+	// Empty prompt: no prompt key is written.
+	np := filepath.Join(dir, "noprompt.json")
+	if err := os.WriteFile(np, orig, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := SetAgent(np, "retoia", "primary", "d", "retoia", "auto", ""); err != nil {
+		t.Fatal(err)
+	}
+	npData, _ := os.ReadFile(np)
+	if !gjson.ValidBytes(npData) || gjson.GetBytes(npData, "agent.retoia.prompt").Exists() {
+		t.Error("empty prompt must write no prompt key and keep valid JSON")
+	}
+
 	// Invalid input config: the write fails validation and the original is restored.
 	bad := filepath.Join(dir, "bad.json")
 	garbage := []byte(`{not json`)
 	if err := os.WriteFile(bad, garbage, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := SetAgent(bad, "retoia", "primary", "d", "retoia", "auto"); err == nil {
+	if err := SetAgent(bad, "retoia", "primary", "d", "retoia", "auto", ""); err == nil {
 		t.Error("expected an error for invalid JSON config")
 	}
 	if got, _ := os.ReadFile(bad); string(got) != string(garbage) {

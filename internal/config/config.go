@@ -227,10 +227,10 @@ func SetAgentModel(path, providerID, agentName, modelID string) error {
 
 // SetAgent backs up the config file at path, then surgically writes
 // `agent.<agentName>.mode`, `.description` and `.model` (= "<providerID>/<modelID>")
-// in one transaction, preserving the rest of the file. It re-reads the result and
+// (plus `.prompt` when non-empty) in one transaction, preserving the rest of the file. It re-reads the result and
 // validates it still parses as JSON; on failure it restores the original content
 // and returns an error.
-func SetAgent(path, agentName, mode, description, providerID, modelID string) error {
+func SetAgent(path, agentName, mode, description, providerID, modelID, prompt string) error {
 	original, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("reading config %q: %w", path, err)
@@ -250,6 +250,9 @@ func SetAgent(path, agentName, mode, description, providerID, modelID string) er
 		{"mode", mode},
 		{"description", description},
 		{"model", providerID + "/" + modelID},
+	}
+	if prompt != "" {
+		fields = append(fields, struct{ key, value string }{"prompt", prompt})
 	}
 	for _, f := range fields {
 		updated, err = sjson.SetBytes(updated, fmt.Sprintf("agent.%s.%s", agentName, f.key), f.value)

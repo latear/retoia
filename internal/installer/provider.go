@@ -131,8 +131,8 @@ func AddProvider(configPath, providerID, baseURL string, models []config.Model) 
 const PrincipalAgentName = "retoia"
 
 // AddAgent writes agent.<agentName> (mode, description and "<providerID>/<modelID>"
-// model) into the opencode.json at configPath. It is a thin wrapper over
+// model, plus an inline system prompt when non-empty) into the opencode.json at configPath. It is a thin wrapper over
 // config.SetAgent, which backs up, validates and restores on failure.
-func AddAgent(configPath, agentName, mode, description, providerID, modelID string) error {
-	return config.SetAgent(configPath, agentName, mode, description, providerID, modelID)
+func AddAgent(configPath, agentName, mode, description, providerID, modelID, prompt string) error {
+	return config.SetAgent(configPath, agentName, mode, description, providerID, modelID, prompt)
 }

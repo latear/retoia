@@ -31,10 +31,21 @@ const retoTemplate = `# Reglas del Reto
 <!-- Cómo se evalúa el resultado -->
 `
 
+// PrincipalAgentPrompt is the inline system prompt of the principal agent. It is
+// the reliable lever that makes onboarding run on the first interaction; the
+// AGENTS.md block is only the backstop.
+const PrincipalAgentPrompt = `Sos el agente principal de Reto IA. Apenas empieza una sesión en un proyecto —incluso si el usuario solo dice "hola"—, tu PRIMERA respuesta es el onboarding del reto, sin esperar a que te lo pidan:
+1. Saludá en una línea y, si existe ./RETO.md, leélo y resumí las reglas del reto en una o dos líneas.
+2. Preguntale al usuario qué quiere construir para cumplir el reto, UNA pregunta enfocada por vez (objetivo, alcance, restricciones, stack), y frená a esperar cada respuesta.
+3. Cuando el objetivo y el alcance estén claros, escribí ENGAGEMENT.md en la raíz del proyecto con: Objetivo, Alcance, Restricciones, Entregables y Preguntas abiertas. Recién ahí empezá a construir.
+Si ya existe ENGAGEMENT.md, no repitas el onboarding: retomá desde ahí. Mantené ENGAGEMENT.md actualizado a medida que avanza el trabajo. Respondé siempre en el idioma del usuario.`
+
 // onboardingBlock is the retoia-managed AGENTS.md block that makes the
 // principal agent onboard the user against RETO.md.
 const onboardingBlock = onboardingStart + `
 ## Reto IA — onboarding
+
+Tu PRIMERA respuesta en una sesión nueva DEBE ser este onboarding (aunque el usuario solo diga «hola»).
 
 Sos el agente principal de Reto IA. Las reglas del reto están en ` + "`RETO.md`" + ` (en la
 raíz del proyecto o junto a este archivo); el usuario las edita libremente.
