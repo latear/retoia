@@ -19,6 +19,35 @@
 #   RETOIA_UPDATE_BASE  base del servidor de updates (default https://cli.retoia.app)
 set -euo pipefail
 
+# ---- estilo: colores e íconos, solo si la salida es una terminal y sin NO_COLOR ----
+if [ -t 2 ] && [ -z "${NO_COLOR:-}" ]; then
+  C_RESET=$'\033[0m'; C_BOLD=$'\033[1m'; C_DIM=$'\033[2m'
+  C_BLUE=$'\033[38;2;0;0;255m'; C_OK=$'\033[32m'; C_ERR=$'\033[31m'
+else
+  C_RESET=""; C_BOLD=""; C_DIM=""; C_BLUE=""; C_OK=""; C_ERR=""
+fi
+
+# banner imprime el wordmark RETO IA (igual que el TUI) en azul, o un título plano
+# cuando no hay color.
+banner() {
+  if [ -z "$C_BLUE" ]; then printf '\nReto IA · instalador\n\n' >&2; return; fi
+  printf '\n%s%s' "$C_BLUE" "$C_BOLD" >&2
+  cat >&2 <<'ART'
+ ██████╗ ███████╗████████╗ ██████╗     ██╗ █████╗
+ ██╔══██╗██╔════╝╚══██╔══╝██╔═══██╗    ██║██╔══██╗
+ ██████╔╝█████╗     ██║   ██║   ██║    ██║███████║
+ ██╔══██╗██╔══╝     ██║   ██║   ██║    ██║██╔══██║
+ ██║  ██║███████╗   ██║   ╚██████╔╝    ██║██║  ██║
+ ╚═╝  ╚═╝╚══════╝   ╚═╝    ╚═════╝     ╚═╝╚═╝  ╚═╝
+ART
+  printf '%s%s   instalador%s\n\n' "$C_RESET" "$C_DIM" "$C_RESET" >&2
+}
+
+# helpers de salida (todo a stderr: stdout puede estar en un pipe)
+step() { printf ' %s▸%s %s\n' "$C_BLUE" "$C_RESET" "$*" >&2; }
+ok()   { printf ' %s✓%s %s\n' "$C_OK"   "$C_RESET" "$*" >&2; }
+err()  { printf ' %s✗%s %s\n' "$C_ERR"  "$C_RESET" "$*" >&2; }
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 BIN="retoia"
@@ -79,7 +108,7 @@ verify_sha256() {
     echo "ERROR: checksum no coincide para $(basename "$file")" >&2
     exit 1
   fi
-  echo "  checksum OK"
+  ok "Integridad verificada"
 }
 
 # resolve_key deja la clave de acceso en KEY: primero $RETOIA_API_KEY, si no la pide
@@ -89,13 +118,15 @@ resolve_key() {
   KEY="$(printf '%s' "$KEY" | tr -d '[:space:]')"
   if [ -z "$KEY" ]; then
     if [ -r /dev/tty ] && [ -w /dev/tty ]; then
-      printf 'Pegá tu clave de acceso: ' >&2
+      printf ' %s%s❯%s %sPegá tu clave de acceso%s %s(la que te entregamos)%s\n   ' \
+        "$C_BOLD" "$C_BLUE" "$C_RESET" "$C_BOLD" "$C_RESET" "$C_DIM" "$C_RESET" >&2
       read -r KEY < /dev/tty || KEY=""
       KEY="$(printf '%s' "$KEY" | tr -d '[:space:]')"
+      printf '\n' >&2
     fi
   fi
   [ -n "$KEY" ] || {
-    echo "Necesito tu clave de acceso: definí RETOIA_API_KEY o corré el instalador de forma interactiva." >&2
+    err "Necesito tu clave de acceso: definí RETOIA_API_KEY o corré el instalador de forma interactiva."
     exit 1
   }
 }
@@ -121,6 +152,7 @@ except Exception:
 }
 
 download_binary() {
+  banner
   detect_platform
   resolve_key
 
@@ -128,44 +160,44 @@ download_binary() {
   base="${base%/}"
 
   if [ -n "$VERSION" ]; then
-    echo "Nota: la descarga por el gateway solo ofrece la última versión; ignoro --version $VERSION (usá --build para una versión concreta)." >&2
+    printf ' %s%s·%s la descarga siempre trae la última versión; ignoro --version %s%s\n' "$C_DIM" "$C_DIM" "$C_RESET" "$VERSION" "$C_RESET" >&2
   fi
 
   local tmp
   tmp="$(mktemp -d)"
   trap 'rm -rf "$tmp"' RETURN
 
-  echo "Consultando $base ..."
+  step "Verificando tu acceso…"
   local code manifest
   code="$(curl -sS -o "$tmp/manifest.json" -w '%{http_code}' -H "Authorization: Bearer $KEY" "$base/retoia/manifest.json" 2>/dev/null || true)"
   case "$code" in
     200) manifest="$(cat "$tmp/manifest.json")" ;;
-    401) echo "ERROR: tu clave de acceso fue rechazada (401) — revisá que sea la correcta." >&2; exit 1 ;;
-    000|"") echo "ERROR: no pude contactar $base" >&2; exit 1 ;;
-    *) echo "ERROR: $base respondió HTTP $code al pedir el manifest." >&2; exit 1 ;;
+    401) err "tu clave de acceso fue rechazada — revisá que sea la correcta."; exit 1 ;;
+    000|"") err "no pude contactar $base."; exit 1 ;;
+    *) err "$base respondió HTTP $code."; exit 1 ;;
   esac
 
   local want
   want="$(manifest_field "$manifest" sha256)"
 
-  echo "Bajando $ASSET ..."
+  step "Bajando retoia ($PLAT)…"
   curl -fsSL -H "Authorization: Bearer $KEY" "$base/retoia/dl/$ASSET" -o "$tmp/$ASSET" || {
-    echo "ERROR: no pude bajar $ASSET desde $base (¿existe para $PLAT?)." >&2
+    err "no pude bajar el binario para $PLAT desde $base."
     exit 1
   }
 
-  [ -f "$tmp/$ASSET" ] || { echo "No se descargó $ASSET." >&2; exit 1; }
+  [ -f "$tmp/$ASSET" ] || { err "la descarga quedó vacía."; exit 1; }
   verify_sha256 "$tmp/$ASSET" "$want"
 
   tar -xzf "$tmp/$ASSET" -C "$tmp"
   # The tarball wraps its contents in a retoia/ folder.
   local binsrc="$tmp/$BIN/$BIN"
   [ -f "$binsrc" ] || binsrc="$tmp/$BIN"
-  [ -f "$binsrc" ] || { echo "El archivo no contiene el binario $BIN." >&2; exit 1; }
+  [ -f "$binsrc" ] || { err "el paquete no contiene el binario $BIN."; exit 1; }
 
   mkdir -p "$DEST_DIR"
   install -m 0755 "$binsrc" "$DEST"
-  echo "Instalado: $DEST"
+  ok "Instalado en $DEST"
   clear_quarantine
   post_install
 }
@@ -197,10 +229,11 @@ ensure_go() {
 build_binary() {
   [ -f "$SCRIPT_DIR/go.mod" ] || { echo "--build necesita el repo (no encuentro go.mod junto al script)." >&2; exit 1; }
   ensure_go
-  echo "Compilando $BIN desde fuente ..."
+  banner
+  step "Compilando retoia desde fuente…"
   mkdir -p "$DEST_DIR"
   ( cd "$SCRIPT_DIR" && go build -o "$DEST" . )
-  echo "Instalado: $DEST"
+  ok "Instalado en "
   post_install
 }
 
@@ -223,7 +256,7 @@ post_install() {
 
 launch_tui() {
   echo
-  echo "Lanzando el instalador interactivo (retoia install) ..."
+  step "Abriendo la configuración…"
   local exe="$DEST"
   command -v "$BIN" >/dev/null 2>&1 && exe="$BIN"
   # Pasamos la key por env para no pedirla dos veces; /dev/tty hace que el TUI
